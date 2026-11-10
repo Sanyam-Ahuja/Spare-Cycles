@@ -243,7 +243,7 @@ function JobHistory() {
     <div style={{ animation: "fadeIn 0.35s ease" }}>
       <header style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 24, marginBottom: 24 }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#fff", margin: 0, letterSpacing: "-0.02em" }}>Job History</h1>
-        <p style={{ color: C.muted, marginTop: 6, fontSize: "0.875rem" }}>Your past contributions to the CampuGrid network.</p>
+        <p style={{ color: C.muted, marginTop: 6, fontSize: "0.875rem" }}>Your past contributions to the SpareCycles network.</p>
       </header>
 
       {loading ? (

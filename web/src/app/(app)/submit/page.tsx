@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
-import { motion, AnimatePresence } from "motion/react";
-import { Upload, CheckCircle2, CircleDashed, File, XCircle, Shield, Cpu, Zap, HardDrive, X, Copy, CheckCircle } from "lucide-react";
+import { Upload, Check, XCircle, ShieldAlert, Download, ArrowRight, Loader2, FileBox } from "lucide-react";
 import { CampuGridAPI } from "@/lib/api";
 import { useJobStream } from "@/lib/ws";
 import { useQuery } from "@tanstack/react-query";
+import { Page, PageHeader, Panel, StatusPill, Tag, Meter } from "@/components/kit";
 
 type SubmitState = "idle" | "uploading" | "detecting" | "ready" | "needs_dockerfile" | "failed";
+
+/** Public sample scene for people without a .blend file. Served from web/public. */
+const SAMPLE_URL = "/samples/sparecycles-sample.blend";
+const SAMPLE_NAME = "sparecycles-sample.blend";
 
 export default function SubmitPage() {
   const { data: session } = useSession();
@@ -23,6 +27,11 @@ export default function SubmitPage() {
   const [pauseDetail, setPauseDetail] = useState<string>("");
   const [errorDetail, setErrorDetail] = useState<string>("");
   const [resolving, setResolving] = useState(false);
+  const [submitError, setSubmitError] = useState<string>("");
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const [sampleError, setSampleError] = useState<string>("");
+  const [highlightSample, setHighlightSample] = useState(false);
+  const sampleTriggered = useRef(false);
 
   const { messages } = useJobStream(jobId, session?.backend_jwt || "");
 
@@ -37,8 +46,9 @@ export default function SubmitPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0 || !session?.backend_jwt) return;
 
+    setSubmitError("");
     setSubmitState("uploading");
-    
+
     // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress(p => Math.min(p + 10, 95));
@@ -55,8 +65,41 @@ export default function SubmitPage() {
       setSubmitState("idle");
       clearInterval(interval);
       setUploadProgress(0);
+      setSubmitError("Upload failed. Check your connection and try again.");
     }
   }, [session, requiresNetwork]);
+
+  /**
+   * Fetch the bundled sample scene, wrap it in a File and send it through
+   * exactly the same path as a dropped file (onDrop -> api.submitJob).
+   */
+  const submitSample = useCallback(async () => {
+    setSampleError("");
+    setSampleLoading(true);
+    try {
+      const res = await fetch(SAMPLE_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], SAMPLE_NAME, { type: "application/octet-stream" });
+      await onDrop([file]);
+    } catch (e) {
+      console.error("Sample fetch failed:", e);
+      setSampleError("Couldn't load the sample scene. Download it and drop it in instead.");
+    } finally {
+      setSampleLoading(false);
+    }
+  }, [onDrop]);
+
+  // /submit?sample=1 (from the landing page) submits the sample once the session is ready.
+  useEffect(() => {
+    if (sampleTriggered.current || !session?.backend_jwt || submitState !== "idle") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("sample") !== "1") return;
+    sampleTriggered.current = true;
+    setHighlightSample(true);
+    window.history.replaceState(null, "", "/submit");
+    submitSample();
+  }, [session?.backend_jwt, submitState, submitSample]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
@@ -130,291 +173,322 @@ export default function SubmitPage() {
     }
   };
 
+  const steps = messages.filter((m) => m.type === "detection_step");
+  const busy = submitState !== "idle";
+
   return (
-    <div className="p-8 relative min-h-screen">
-      {/* 3D Background Graphics */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <motion.div
-          className="absolute top-28 right-24 w-44 h-44 border-2 border-emerald-500/40 rounded-full shadow-lg shadow-emerald-500/25"
-          animate={{ rotateX: [0, 180, 360], rotateY: [0, 360] }}
-          transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
-          style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-        <motion.div
-           className="absolute bottom-28 right-56 w-38 h-38 border-2 border-emerald-500/20 rounded-lg"
-           animate={{ rotateZ: [0, 360] }}
-           transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
-           style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-      </div>
+    <Page>
+      <PageHeader
+        title="Submit a job"
+        sub="Upload your files. The pipeline detects the workload, builds a container and splits the work into chunks for the network."
+      />
 
-      <div className="relative z-10 mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Submit New Job</h1>
-        <p className="text-slate-400">Configure and submit your compute job to the network.</p>
-      </div>
-
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Area */}
-        <div className="lg:col-span-2 space-y-6">
-          <AnimatePresence mode="wait">
-            {submitState === "idle" && (
-              <motion.div
-                key="dropzone"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-8"
-              >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          {submitState === "idle" && (
+            <>
+              <section className="panel p-2">
                 <div
                   {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-20 text-center transition-all cursor-pointer ${
-                    isDragActive ? "border-emerald-500 bg-emerald-500/5" : "border-slate-700 hover:border-emerald-500/50"
+                  className={`flex cursor-pointer flex-col items-center justify-center border border-dashed px-6 py-14 text-center transition-colors sm:py-20 ${
+                    isDragActive
+                      ? "border-primary bg-primary-wash"
+                      : "border-rule-strong hover:border-ink hover:bg-raised/50"
                   }`}
                 >
                   <input {...getInputProps()} />
-                  <Upload className={`w-16 h-16 mx-auto mb-6 transition-colors ${isDragActive ? "text-emerald-400" : "text-slate-600"}`} />
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    {isDragActive ? "Release to upload" : "Drop your files here"}
-                  </h3>
-                  <p className="text-slate-400 max-w-sm mx-auto mb-8">
-                    Upload .blend, .py, .ipynb or archives (.zip, .tar.gz). Our pipeline will automatically detect the best hardware.
-                  </p>
-                  
-                  <div className="flex justify-center gap-4">
-                    <label className="flex items-center gap-3 cursor-pointer py-2 px-4 bg-slate-800/50 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors" onClick={e => e.stopPropagation()}>
-                      <input 
-                        type="checkbox" 
-                        checked={requiresNetwork} 
-                        onChange={e => setRequiresNetwork(e.target.checked)}
-                        className="w-4 h-4 rounded accent-emerald-500" 
-                      />
-                      <span className="text-sm text-slate-300">Public Internet Required</span>
-                    </label>
+                  <div className={`mb-5 flex h-12 w-12 items-center justify-center border ${isDragActive ? "border-primary text-primary" : "border-ink text-ink"}`}>
+                    <Upload size={20} strokeWidth={1.75} />
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {(submitState === "uploading" || submitState === "detecting") && (
-              <motion.div
-                key="processing"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-10"
-              >
-                <div className="flex flex-col items-center mb-10 text-center">
-                  <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
-                    <div className="absolute inset-0 border-4 border-white/5 rounded-full" />
-                    <motion.div 
-                      className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                    />
-                    <Cpu className="w-10 h-10 text-emerald-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mb-2">
-                    {submitState === "uploading" ? "Broadcasting to Network..." : "AI Detection Active"}
+                  <h2 className="text-[22px] font-semibold tracking-[-0.02em]">
+                    {isDragActive ? "Release to upload" : "Drop files here"}
                   </h2>
-                  <p className="text-slate-400">
-                    {submitState === "uploading" 
-                      ? `Uploading artifacts: ${uploadProgress}%` 
-                      : "Decoding workload type and topology..."}
+                  <p className="mt-2 max-w-[44ch] text-sm leading-relaxed text-mute">
+                    or click to choose. Accepts <span className="num text-ink-2">.blend .py .ipynb .zip .tar.gz</span>.
+                    Hardware is matched automatically.
                   </p>
                 </div>
-
-                <div className="space-y-3 bg-black/20 p-6 rounded-lg border border-slate-800 font-mono text-sm">
-                   {messages.filter(m => m.type === "detection_step").map((step, idx, arr) => (
-                     <div key={idx} className="flex items-start gap-3">
-                        {idx === arr.length - 1 ? (
-                          <CircleDashed className="animate-spin text-emerald-500 mt-1 flex-shrink-0" size={14} />
-                        ) : (
-                          <CheckCircle2 className="text-green-500 mt-1 flex-shrink-0" size={14} />
-                        )}
-                        <span className={idx === arr.length - 1 ? "text-white" : "text-slate-500"}>
-                          {step.detail || step.step}
-                        </span>
-                     </div>
-                   ))}
-                   {messages.length === 0 && (
-                      <div className="text-slate-600 italic animate-pulse font-sans">Connecting to pipeline...</div>
-                   )}
-                </div>
-              </motion.div>
-            )}
-
-            {submitState === "ready" && jobProfile && (
-              <motion.div
-                key="ready"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-8"
-              >
-                <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                      <CheckCircle2 className="text-green-500" size={32} />
-                      Analysis Complete
-                    </h2>
-                    <p className="text-slate-400 mt-1">Found optimal hardware configuration.</p>
-                  </div>
-                  <div className="bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-lg text-center">
-                    <div className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Confidence</div>
-                    <div className="text-2xl font-black text-green-500">{(jobProfile.confidence * 100).toFixed(0)}%</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 mb-8">
-                  <div className="space-y-4">
-                     <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Workload</div>
-                        <div className="text-xl font-bold text-white capitalize">{jobProfile.type.replace("_", " ")}</div>
-                     </div>
-                     <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Framework</div>
-                        <div className="text-xl font-bold text-white capitalize">{jobProfile.framework || "Automatic"}</div>
-                     </div>
-                  </div>
-                  <div className="space-y-4">
-                     <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Main Artifact</div>
-                        <div className="text-xl font-bold text-emerald-400 flex items-center gap-2">
-                           <File size={20} />
-                           {jobProfile.entry_file}
-                        </div>
-                     </div>
-                     <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Resources</div>
-                        <div className="flex gap-2 mt-1">
-                          {jobProfile.gpu_required && <span className="px-2 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded">GPU</span>}
-                          <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded">{jobProfile.resources.cpu_cores} vCPU</span>
-                          <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded">{jobProfile.resources.ram_gb}GB RAM</span>
-                        </div>
-                     </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <button onClick={() => setSubmitState("idle")} className="flex-1 py-4 bg-slate-800 text-slate-300 rounded-lg font-bold hover:bg-slate-700 transition-colors">
-                    Back
-                  </button>
-                  <button onClick={handleLaunch} className="flex-[2] py-4 bg-emerald-500 text-white rounded-lg font-black hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">
-                    🚀 Launch Workload
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {submitState === "needs_dockerfile" && (
-              <motion.div
-                key="needs_dockerfile"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-slate-900/30 backdrop-blur-xl border border-yellow-500/30 rounded-xl p-8"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <Shield className="text-yellow-400" size={28} />
-                  <h2 className="text-2xl font-bold text-white">Action Needed</h2>
-                </div>
-                <p className="text-slate-300 whitespace-pre-line mb-6">{pauseDetail}</p>
-
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Upload a Dockerfile</span>
+                <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-1 pt-3">
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink-2">
                     <input
-                      type="file"
-                      disabled={resolving}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleResolve({ dockerfile: f });
-                      }}
-                      className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
+                      type="checkbox"
+                      checked={requiresNetwork}
+                      onChange={(e) => setRequiresNetwork(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--primary)]"
                     />
+                    Job needs public internet access
                   </label>
+                  {submitError && <span className="text-sm text-err">{submitError}</span>}
+                </div>
+              </section>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-slate-800" />
-                    <span className="text-xs text-slate-600 uppercase">or</span>
-                    <div className="flex-1 h-px bg-slate-800" />
+              <SampleCard
+                highlight={highlightSample}
+                loading={sampleLoading}
+                error={sampleError}
+                disabled={!session?.backend_jwt}
+                onSubmit={submitSample}
+              />
+            </>
+          )}
+
+          {(submitState === "uploading" || submitState === "detecting") && (
+            <Panel
+              title={submitState === "uploading" ? "Uploading" : "Pipeline"}
+              aside={<StatusPill status="analyzing" label={submitState === "uploading" ? "uploading" : "analyzing"} />}
+              bodyClassName=""
+            >
+              <div className="border-b border-rule px-5 py-6">
+                <h2 className="text-[22px] font-semibold tracking-[-0.02em]">
+                  {submitState === "uploading" ? "Uploading files" : "Detecting the workload"}
+                </h2>
+                <p className="mt-1 text-sm text-mute">
+                  {submitState === "uploading"
+                    ? "Sending your files to object storage."
+                    : "Identifying the job type, framework and resources, then preparing a container."}
+                </p>
+                <div className="mt-5 flex items-center gap-3">
+                  <div className="flex-1">
+                    <Meter value={submitState === "uploading" ? uploadProgress : 100} tone="primary" />
                   </div>
-
-                  <button
-                    disabled={resolving}
-                    onClick={() => handleResolve({ useAi: true })}
-                    className="w-full py-4 bg-emerald-500 text-white rounded-lg font-black hover:bg-emerald-400 transition-colors disabled:opacity-50"
-                  >
-                    {resolving ? "Submitting…" : "🤖 Authorize AI to configure it"}
-                  </button>
-                  <button
-                    disabled={resolving}
-                    onClick={() => setSubmitState("idle")}
-                    className="w-full py-3 bg-slate-800 text-slate-300 rounded-lg font-bold hover:bg-slate-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  <span className="num w-12 text-right text-sm">{submitState === "uploading" ? `${uploadProgress}%` : "done"}</span>
                 </div>
-              </motion.div>
-            )}
+              </div>
+              <ol className="font-mono text-[13px]">
+                {steps.map((step, idx, arr) => {
+                  const current = idx === arr.length - 1;
+                  return (
+                    <li key={idx} className="flex items-start gap-3 border-b border-rule px-5 py-2.5 last:border-b-0">
+                      {current ? (
+                        <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin text-live motion-reduce:animate-none" />
+                      ) : (
+                        <Check size={14} className="mt-0.5 shrink-0 text-ok" />
+                      )}
+                      <span className={current ? "text-ink" : "text-mute"}>{step.detail || step.step}</span>
+                    </li>
+                  );
+                })}
+                {messages.length === 0 && (
+                  <li className="px-5 py-3 text-mute">Connecting to pipeline…</li>
+                )}
+              </ol>
+            </Panel>
+          )}
 
-            {submitState === "failed" && (
-              <motion.div
-                key="failed"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-slate-900/30 backdrop-blur-xl border border-red-500/30 rounded-xl p-8"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <XCircle className="text-red-400" size={28} />
-                  <h2 className="text-2xl font-bold text-white">Job Failed</h2>
+          {submitState === "ready" && jobProfile && (
+            <Panel title="Analysis complete" aside={<StatusPill status="completed" label="ready" />} bodyClassName="">
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-rule px-5 py-6">
+                <div>
+                  <h2 className="text-[22px] font-semibold capitalize tracking-[-0.02em]">
+                    {(jobProfile.type || "workload").replace(/_/g, " ")}
+                  </h2>
+                  <p className="mt-1 text-sm text-mute">Hardware matched. Chunks are queued for the network.</p>
                 </div>
-                <p className="text-slate-300 whitespace-pre-line mb-6">{errorDetail}</p>
-                <button
-                  onClick={() => { setSubmitState("idle"); setUploadProgress(0); }}
-                  className="w-full py-4 bg-slate-800 text-slate-300 rounded-lg font-bold hover:bg-slate-700 transition-colors"
-                >
-                  Start Over
+                <div className="text-right">
+                  <div className="label">Confidence</div>
+                  <div className="num mt-1 text-[28px] leading-none text-ink">
+                    {((jobProfile.confidence ?? 0) * 100).toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+              <dl className="grid grid-cols-1 sm:grid-cols-2">
+                <Spec label="Framework" value={<span className="capitalize">{jobProfile.framework || "automatic"}</span>} />
+                <Spec
+                  label="Entry file"
+                  value={
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <FileBox size={14} className="shrink-0 text-mute" />
+                      <span className="truncate">{jobProfile.entry_file}</span>
+                    </span>
+                  }
+                />
+                <Spec
+                  label="Resources"
+                  value={
+                    <span className="flex flex-wrap gap-1.5">
+                      {jobProfile.gpu_required && <Tag tone="primary">GPU</Tag>}
+                      <Tag>{jobProfile.resources?.cpu_cores} vCPU</Tag>
+                      <Tag>{jobProfile.resources?.ram_gb} GB RAM</Tag>
+                    </span>
+                  }
+                />
+                <Spec label="Job ID" value={<span className="truncate">{jobId}</span>} />
+              </dl>
+              <div className="flex flex-col-reverse gap-2 p-4 sm:flex-row sm:justify-end">
+                <button onClick={() => setSubmitState("idle")} className="btn btn-outline">
+                  Back
                 </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <button onClick={handleLaunch} className="btn btn-primary">
+                  Open live monitor
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            </Panel>
+          )}
+
+          {submitState === "needs_dockerfile" && (
+            <Panel title="Action needed" aside={<StatusPill status="needs_dockerfile" label="paused" />}>
+              <div className="flex items-start gap-3">
+                <ShieldAlert size={20} className="mt-0.5 shrink-0 text-warn" />
+                <div>
+                  <h2 className="text-[20px] font-semibold tracking-[-0.02em]">We couldn&apos;t detect this workload</h2>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-2">{pauseDetail}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="label">Upload a Dockerfile</span>
+                  <input
+                    type="file"
+                    disabled={resolving}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleResolve({ dockerfile: f });
+                    }}
+                    className="mt-2 block w-full text-sm text-mute file:mr-4 file:h-9 file:cursor-pointer file:rounded-[var(--radius)] file:border file:border-rule-strong file:bg-surface file:px-3 file:text-sm file:text-ink hover:file:border-ink"
+                  />
+                </label>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-rule" />
+                  <span className="label">or</span>
+                  <div className="h-px flex-1 bg-rule" />
+                </div>
+
+                <button
+                  disabled={resolving}
+                  onClick={() => handleResolve({ useAi: true })}
+                  className="btn btn-primary w-full"
+                >
+                  {resolving ? "Submitting…" : "Let the AI pipeline generate one"}
+                </button>
+                <button
+                  disabled={resolving}
+                  onClick={() => setSubmitState("idle")}
+                  className="btn btn-ghost w-full"
+                >
+                  Cancel
+                </button>
+              </div>
+            </Panel>
+          )}
+
+          {submitState === "failed" && (
+            <Panel title="Job failed" aside={<StatusPill status="failed" />}>
+              <div className="flex items-start gap-3">
+                <XCircle size={20} className="mt-0.5 shrink-0 text-err" />
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink-2">{errorDetail}</p>
+              </div>
+              <button
+                onClick={() => { setSubmitState("idle"); setUploadProgress(0); }}
+                className="btn btn-outline mt-6 w-full"
+              >
+                Start over
+              </button>
+            </Panel>
+          )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4">Network Status</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                  <Cpu size={18} className="text-emerald-400" />
-                  Online Nodes
-                </div>
-                <span className="text-white font-bold">{clusterStats?.active_nodes ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                  <Zap size={18} className="text-yellow-400" />
-                  Jobs Today
-                </div>
-                <span className="text-white font-bold">{clusterStats?.jobs_completed_today ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                  <HardDrive size={18} className="text-purple-400" />
-                  GPU Hours Today
-                </div>
-                <span className="text-white font-bold">{(clusterStats?.total_gpu_hours_today ?? 0).toFixed?.(1) ?? 0}</span>
-              </div>
-            </div>
-          </div>
+        <aside className="space-y-6">
+          <Panel title="Network" aside={<StatusPill status="online" label="live" />} bodyClassName="">
+            <dl>
+              <Row label="Online nodes" value={clusterStats?.active_nodes ?? 0} />
+              <Row label="Jobs completed today" value={clusterStats?.jobs_completed_today ?? 0} />
+              <Row label="GPU hours today" value={(clusterStats?.total_gpu_hours_today ?? 0).toFixed?.(1) ?? 0} />
+            </dl>
+          </Panel>
 
-          <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/30 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-2">Estimated Saving</h3>
-            <div className="text-4xl font-black text-white">~85%</div>
-            <p className="text-emerald-400 text-xs mt-1">Compared to hyperscalers</p>
-          </div>
-        </div>
+          <Panel title="What happens next" bodyClassName="">
+            <ol className="text-sm">
+              {[
+                ["Detect", "Type, framework and resources"],
+                ["Scan", "Malicious code and miners"],
+                ["Containerize", "Pre-verified image or a new build"],
+                ["Split", "Frames, ranks, shards or domains"],
+                ["Dispatch", "Best-ranked online nodes"],
+              ].map(([k, v], i) => (
+                <li key={k} className="flex gap-3 border-b border-rule px-5 py-2.5 last:border-b-0">
+                  <span className="num w-5 shrink-0 text-xs leading-5 text-mute">{i + 1}</span>
+                  <span>
+                    <span className="font-medium text-ink">{k}</span>
+                    <span className="text-mute"> · {v}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+
+          {busy && submitState !== "failed" && (
+            <p className="px-1 text-xs leading-relaxed text-mute">
+              You can leave this page. The job keeps running; find it under Monitor.
+            </p>
+          )}
+        </aside>
       </div>
+    </Page>
+  );
+}
+
+function SampleCard({
+  highlight,
+  loading,
+  error,
+  disabled,
+  onSubmit,
+}: {
+  highlight: boolean;
+  loading: boolean;
+  error: string;
+  disabled: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <section
+      id="sample"
+      className={`panel flex flex-col gap-5 p-5 sm:flex-row sm:items-center ${highlight ? "!border-primary" : ""}`}
+    >
+      <div className="grid w-fit shrink-0 grid-cols-4 gap-[3px] border border-ink bg-canvas p-[5px]" aria-hidden="true">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <span key={i} className={`h-3.5 w-3.5 ${i === 6 ? "bg-primary" : "bg-ink"}`} />
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-[17px] font-semibold tracking-[-0.01em]">No .blend handy? Use our sample scene</h2>
+        <p className="mt-1 text-sm leading-relaxed text-mute">
+          A 72-frame animated scene, about 2 minutes on two laptops.
+        </p>
+        <p className="num mt-1.5 text-[11px] text-mute">{SAMPLE_NAME} · 1.4 MB · 640×360</p>
+        {error && <p className="mt-2 text-sm text-err">{error}</p>}
+      </div>
+      <div className="flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
+        <button type="button" onClick={onSubmit} disabled={loading || disabled} className="btn btn-ink">
+          {loading ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" /> : <ArrowRight size={16} />}
+          {loading ? "Loading sample…" : "Use sample & submit"}
+        </button>
+        <a href={SAMPLE_URL} download className="btn btn-outline">
+          <Download size={16} />
+          Download sample
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function Spec({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0 border-b border-rule px-5 py-4 sm:odd:border-r">
+      <dt className="label">{label}</dt>
+      <dd className="num mt-1.5 text-sm text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-rule px-5 py-3 last:border-b-0">
+      <dt className="text-sm text-ink-2">{label}</dt>
+      <dd className="num text-sm text-ink">{value}</dd>
     </div>
   );
 }

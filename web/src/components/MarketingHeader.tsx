@@ -1,34 +1,68 @@
 import Link from "next/link";
-import { Network } from "lucide-react";
-import { motion } from "motion/react";
+import { Wordmark, ThemeToggle } from "@/components/Brand";
+
+const NAV = [
+  { href: "/#how", label: "How it works" },
+  { href: "/#workloads", label: "Workloads" },
+  { href: "/#contribute", label: "Contribute" },
+  { href: "/pricing", label: "Pricing" },
+];
 
 export function MarketingHeader() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-8 py-6 backdrop-blur-2xl bg-slate-950/20 border-b border-white/5">
-      <Link href="/" className="flex items-center gap-3 group">
-        <motion.div 
-          className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30 group-hover:rotate-6 transition-transform"
-          whileHover={{ scale: 1.1 }}
-        >
-          <Network size={20} className="text-white" />
-        </motion.div>
-        <span className="text-xl font-black tracking-tighter text-white uppercase tracking-widest">CampuGrid</span>
-      </Link>
-      
-      <nav className="hidden md:flex items-center gap-10">
-        <Link href="/" className="text-[10px] font-black text-slate-400 hover:text-emerald-400 uppercase tracking-[0.2em] transition-all">Platform</Link>
-        <Link href="/pricing" className="text-[10px] font-black text-slate-400 hover:text-emerald-400 uppercase tracking-[0.2em] transition-all">Pricing</Link>
-        <Link href="/docs" className="text-[10px] font-black text-slate-400 hover:text-emerald-400 uppercase tracking-[0.2em] transition-all">Protocol</Link>
-      </nav>
-
-      <div className="flex items-center gap-6">
-        <Link href="/login" className="text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-all">
-          Sign In
-        </Link>
-        <Link href="/login" className="px-6 py-3 rounded-2xl bg-white text-slate-950 font-black uppercase tracking-widest text-[10px] hover:bg-emerald-50 transition-all shadow-xl active:scale-95">
-          Join the Grid
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-rule bg-canvas/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-8">
+        <Wordmark />
+        <nav className="hidden items-center gap-7 md:flex" aria-label="Site">
+          {NAV.map((n) => (
+            <Link key={n.href} href={n.href} className="text-sm text-ink-2 transition-colors hover:text-ink">
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <Link href="/login" className="btn btn-ghost btn-sm hidden sm:inline-flex">
+            Sign in
+          </Link>
+          <Link href="/submit" className="btn btn-primary btn-sm">
+            Submit a job
+          </Link>
+        </div>
       </div>
     </header>
+  );
+}
+
+export function MarketingFooter() {
+  return (
+    <footer className="border-t border-rule">
+      <div className="mx-auto grid max-w-[1240px] gap-8 px-4 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <Wordmark />
+          <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-mute">
+            Your campus&apos;s idle compute, put to work.
+          </p>
+          <p className="num mt-6 text-xs text-mute">sparecycles.sahuja.in</p>
+        </div>
+        <div>
+          <div className="label mb-3">Product</div>
+          <ul className="space-y-2 text-sm">
+            <li><Link className="text-ink-2 hover:text-ink" href="/#how">How it works</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/#workloads">Workloads</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/pricing">Pricing</Link></li>
+          </ul>
+        </div>
+        <div>
+          <div className="label mb-3">Start</div>
+          <ul className="space-y-2 text-sm">
+            <li><Link className="text-ink-2 hover:text-ink" href="/submit">Submit a job</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/submit?sample=1">Try the sample scene</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/contributor/register">Contribute a machine</Link></li>
+            <li><Link className="text-ink-2 hover:text-ink" href="/login">Sign in</Link></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
   );
 }

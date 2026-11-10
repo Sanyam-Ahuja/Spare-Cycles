@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { CampuGridAPI } from "@/lib/api";
 import { useJobStream } from "@/lib/ws";
-import { motion, AnimatePresence } from "motion/react";
-import { Activity, CheckCircle2, AlertTriangle, ArrowLeft, Cpu, Thermometer, Battery, Terminal, HardDrive, Zap, Clock } from "lucide-react";
+import { ArrowLeft, Check, Circle, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Page, PageHeader, Panel, Stat, StatRow, StatusPill, Meter, Empty, Loading } from "@/components/kit";
 
 export default function MonitorPage() {
   const params = useParams();
@@ -26,7 +26,7 @@ export default function MonitorPage() {
   });
 
   const { messages } = useJobStream(jobId, session?.backend_jwt || "");
-  
+
   const [liveChunks, setLiveChunks] = useState<any[]>([]);
   const [jobStatus, setJobStatus] = useState<string>("queued");
   const [logs, setLogs] = useState<any[]>([]);
@@ -54,11 +54,11 @@ export default function MonitorPage() {
   useEffect(() => {
     if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
-      
+
       if (lastMsg.type === "chunk_status") {
-        setLiveChunks(prev => prev.map(c => 
-          c.id === lastMsg.chunk_id 
-            ? { ...c, status: lastMsg.status, progress: lastMsg.progress || c.progress, telemetry: lastMsg.telemetry } 
+        setLiveChunks(prev => prev.map(c =>
+          c.id === lastMsg.chunk_id
+            ? { ...c, status: lastMsg.status, progress: lastMsg.progress || c.progress, telemetry: lastMsg.telemetry }
             : c
         ));
       } else if (lastMsg.type === "job_complete") {
@@ -72,208 +72,254 @@ export default function MonitorPage() {
 
   if (isLoading || !jobInfo) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-mono text-sm tracking-widest uppercase">Initializing Telemetry...</p>
-        </div>
-      </div>
+      <Page>
+        <Loading label="Loading job" />
+      </Page>
     );
   }
 
   const completedChunks = liveChunks.filter(c => c.status === "completed").length;
   const progressPercent = liveChunks.length > 0 ? (completedChunks / liveChunks.length) * 100 : 0;
-  
+
   // Aggregate telemetry from active chunks
   const activeChunks = liveChunks.filter(c => c.status === "running");
-  const avgGpuLoad = activeChunks.length > 0 
-    ? activeChunks.reduce((acc, c) => acc + (c.telemetry?.gpu_load || 0), 0) / activeChunks.length 
+  const avgGpuLoad = activeChunks.length > 0
+    ? activeChunks.reduce((acc, c) => acc + (c.telemetry?.gpu_load || 0), 0) / activeChunks.length
     : 0;
 
+  // Display-only: pipeline steps streamed over the same socket.
+  const pipelineSteps = messages.filter((m: any) => m.type === "detection_step");
+
   return (
-    <div className="p-8 relative min-h-screen">
-      {/* 3D Background Graphics */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <motion.div
-          className="absolute top-32 right-20 w-48 h-48 border-2 border-emerald-500/30 rounded-full shadow-lg shadow-emerald-500/20"
-          animate={{ rotateY: [0, 360], scale: [1, 1.15, 1] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-          style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-        <motion.div
-           className="absolute bottom-20 right-40 w-36 h-36 border-2 border-emerald-500/25 rounded-lg"
-           animate={{ rotateZ: [0, 360], rotateX: [0, 180, 360] }}
-           transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-           style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-      </div>
+    <Page>
+      <Link href="/monitor" className="btn btn-ghost btn-sm -ml-3 mb-4">
+        <ArrowLeft size={14} />
+        Monitor
+      </Link>
 
-      <div className="relative z-10 mb-8">
-        <Link href="/monitor" className="flex items-center gap-2 text-slate-500 hover:text-emerald-400 transition-colors mb-4 group w-fit">
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-bold uppercase tracking-widest">Back to Monitor</span>
-        </Link>
-        <div className="flex justify-between items-end">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-white">Workload: {jobId.substring(0, 12)}...</h1>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                jobStatus === "running" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                jobStatus === "completed" ? "bg-green-500/20 text-green-400 border-green-500/30" :
-                "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-              }`}>
-                {jobStatus}
-              </span>
+      <PageHeader
+        meta={<StatusPill status={jobStatus} />}
+        title={
+          <>
+            Job <span className="num">{jobId.substring(0, 12)}</span>
+          </>
+        }
+        sub={<span className="break-all font-mono text-[13px]">{jobInfo.input_path}</span>}
+        actions={
+          <div className="text-left md:text-right">
+            <div className="label">Progress</div>
+            <div className="num mt-1 text-[34px] font-medium leading-none tracking-[-0.02em] text-primary">
+              {progressPercent.toFixed(1)}
+              <span className="text-base text-mute">%</span>
             </div>
-            <p className="text-slate-400 font-mono text-sm">{jobInfo.input_path}</p>
           </div>
-          <div className="text-right">
-             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Global Progress</div>
-             <div className="text-3xl font-black text-white">{progressPercent.toFixed(1)}%</div>
-          </div>
+        }
+      />
+
+      {jobStatus === "completed" && (
+        <div className="mb-6 flex items-center gap-3 rounded-[var(--radius)] border border-rule bg-surface px-4 py-3 text-sm text-ink">
+          <Check size={16} className="text-ok" />
+          Job complete. Opening results.
+          <Link href={`/results/${jobId}`} className="link ml-auto whitespace-nowrap">
+            Go now
+          </Link>
         </div>
+      )}
+
+      <div className="mb-6">
+        <Meter value={progressPercent} tone={jobStatus === "completed" ? "ok" : "primary"} />
       </div>
 
-      {/* Live Stats Grid */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          icon={<Activity className="w-6 h-6" />}
-          label="Status"
-          value={jobStatus.charAt(0).toUpperCase() + jobStatus.slice(1)}
-          iconBg="bg-emerald-500/20"
-          iconColor="text-emerald-400"
-        />
-        <StatCard
-          icon={<Cpu className="w-6 h-6" />}
-          label="Avg GPU Load"
-          value={`${avgGpuLoad.toFixed(0)}%`}
-          iconBg="bg-emerald-500/20"
-          iconColor="text-emerald-400"
-        />
-        <StatCard
-          icon={<HardDrive className="w-6 h-6" />}
-          label="Completed"
-          value={`${completedChunks}/${liveChunks.length}`}
-          iconBg="bg-emerald-500/20"
-          iconColor="text-emerald-400"
-        />
-        <StatCard
-          icon={<Clock className="w-6 h-6" />}
-          label="Elapsed Time"
-          value="2h 15m"
-          iconBg="bg-emerald-500/20"
-          iconColor="text-emerald-400"
-        />
-      </div>
+      <StatRow cols={4} className="mb-6">
+        <Stat label="Status" value={<span className="text-[20px]">{jobStatus.replace(/_/g, " ")}</span>} />
+        <Stat label="Avg GPU load" value={avgGpuLoad.toFixed(0)} unit="%" />
+        <Stat label="Chunks done" value={`${completedChunks}/${liveChunks.length}`} accent={completedChunks > 0} />
+        <Stat label="Running now" value={activeChunks.length} />
+      </StatRow>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Performance & Chunks */}
-        <div className="lg:col-span-2 space-y-6">
-          <motion.div
-            className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
+          <Panel
+            title="Chunk map"
+            aside={<span className="num text-xs">{liveChunks.length} tiles</span>}
+            bodyClassName=""
           >
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Zap className="text-emerald-500" size={20} />
-              Resource Distribution
-            </h2>
-            
-            <div className="space-y-4">
-              {liveChunks.map((chunk) => (
-                <div key={chunk.id} className="p-4 bg-slate-800/30 border border-slate-800 rounded-lg hover:border-emerald-500/30 transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        chunk.status === "running" ? "bg-emerald-500 animate-pulse" :
-                        chunk.status === "completed" ? "bg-green-500" :
-                        "bg-slate-700"
-                      }`} />
-                      <span className="text-xs font-bold text-white uppercase tracking-widest">Chunk #{chunk.chunk_index}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">Node ID: {chunk.node_id?.substring(0, 8) || "WAITING"}</span>
-                    </div>
-                    <span className="text-xs font-black text-emerald-400">{chunk.progress || 0}%</span>
+            {liveChunks.length === 0 ? (
+              <Empty title="No chunks yet">The job is split into chunks once analysis finishes.</Empty>
+            ) : (
+              <>
+                <div className="p-5">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(32px,1fr))] gap-1">
+                    {liveChunks.map((chunk) => (
+                      <ChunkTile key={chunk.id} chunk={chunk} />
+                    ))}
                   </div>
-                  <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                      initial={{ width: "0%" }}
-                      animate={{ width: `${chunk.progress || 0}%` }}
-                      transition={{ duration: 1 }}
-                    />
-                  </div>
-                  {chunk.status === "running" && chunk.telemetry && (
-                    <div className="mt-3 flex gap-6 text-[10px] font-bold uppercase tracking-widest">
-                       <div className="flex items-center gap-1.5 text-slate-400">
-                          <Cpu size={12} className="text-emerald-500" />
-                          GPU {chunk.telemetry.gpu_load}%
-                       </div>
-                       <div className="flex items-center gap-1.5 text-slate-400">
-                          <Thermometer size={12} className="text-yellow-500" />
-                          TEMP {chunk.telemetry.temp}°C
-                       </div>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          </motion.div>
+                <Legend />
+              </>
+            )}
+          </Panel>
+
+          {liveChunks.length > 0 && (
+            <Panel title="Chunks" bodyClassName="">
+              <div className="overflow-x-auto">
+                <table className="table-ruled">
+                  <thead>
+                    <tr>
+                      <th>Chunk</th>
+                      <th>Node</th>
+                      <th>Status</th>
+                      <th className="min-w-[120px]">Progress</th>
+                      <th>GPU</th>
+                      <th>Temp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveChunks.map((chunk) => {
+                      const showTelemetry = chunk.status === "running" && chunk.telemetry;
+                      return (
+                        <tr key={chunk.id}>
+                          <td className="num text-ink">#{chunk.chunk_index}</td>
+                          <td className="num text-[12px] text-mute">{chunk.node_id?.substring(0, 8) || "waiting"}</td>
+                          <td>
+                            <StatusPill status={chunk.status} />
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="w-20">
+                                <Meter value={chunk.progress || 0} tone={chunk.status === "completed" ? "ink" : "live"} />
+                              </div>
+                              <span className="num text-[12px] text-ink-2">{chunk.progress || 0}%</span>
+                            </div>
+                          </td>
+                          <td className="num text-[12px] text-ink-2">
+                            {showTelemetry ? `${chunk.telemetry.gpu_load}%` : "—"}
+                          </td>
+                          <td className="num text-[12px] text-ink-2">
+                            {showTelemetry ? `${chunk.telemetry.temp}°C` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          )}
         </div>
 
-        {/* Live Logs */}
-        <div className="space-y-6">
-          <motion.div
-            className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6 h-[500px] flex flex-col"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Terminal className="text-emerald-500" size={20} />
-              Live Logs
-            </h2>
-            <div className="flex-1 bg-black/40 rounded-lg p-4 font-mono text-xs overflow-y-auto space-y-2 border border-slate-800 shadow-inner custom-scrollbar">
-               {logs.length === 0 ? (
-                 <div className="text-slate-700 italic animate-pulse">Waiting for telemetry heartbeat...</div>
-               ) : (
-                 logs.map((log, idx) => (
-                   <div key={idx} className="flex gap-3">
-                      <span className="text-slate-600 shrink-0">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                      <span className={log.level === "error" ? "text-red-400" : "text-emerald-400/80"}>
-                        {log.log || log.message}
+        <div className="min-w-0 space-y-6">
+          {pipelineSteps.length > 0 && (
+            <Panel title="Pipeline" bodyClassName="">
+              <ol>
+                {pipelineSteps.map((step: any, idx: number, arr: any[]) => {
+                  const isLast = idx === arr.length - 1;
+                  const failed = step.step === "failed";
+                  const done = step.completed || !isLast;
+                  return (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-3 border-b border-rule px-5 py-3 last:border-b-0"
+                    >
+                      <span className="mt-0.5 shrink-0">
+                        {failed ? (
+                          <X size={14} className="text-err" />
+                        ) : done ? (
+                          <Check size={14} className="text-ok" />
+                        ) : (
+                          <Circle size={14} className="animate-pulse fill-live text-live motion-reduce:animate-none" />
+                        )}
                       </span>
-                   </div>
-                 ))
-               )}
-            </div>
-          </motion.div>
+                      <div className="min-w-0">
+                        <div className={`font-mono text-[12px] uppercase tracking-[0.04em] ${failed ? "text-err" : "text-ink"}`}>
+                          {step.step}
+                        </div>
+                        {step.detail && <div className="mt-0.5 text-[13px] text-mute">{step.detail}</div>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Panel>
+          )}
 
-          <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 border border-emerald-500/30 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-2">Network Savings</h3>
-            <div className="text-4xl font-black text-white">₹1,240</div>
-            <p className="text-emerald-400 text-xs mt-1">Saved vs Cloud Providers</p>
-          </div>
+          <Panel title="Logs" aside={<span className="num text-xs">{logs.length}</span>} bodyClassName="p-3">
+            <div className="h-[420px] overflow-y-auto rounded-[2px] border border-rule bg-raised p-3 font-mono text-[12px] leading-relaxed">
+              {logs.length === 0 ? (
+                <div className="text-mute">Waiting for node output.</div>
+              ) : (
+                logs.map((log, idx) => (
+                  <div key={idx} className="flex gap-3">
+                    <span className="num shrink-0 text-mute">
+                      {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </span>
+                    <span className={`min-w-0 break-words ${log.level === "error" ? "text-err" : "text-ink-2"}`}>
+                      {log.log || log.message}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </Panel>
         </div>
       </div>
+    </Page>
+  );
+}
+
+function tileClass(status?: string) {
+  switch ((status || "").toLowerCase()) {
+    case "assigned":
+      return "border-live bg-live-wash text-ink";
+    case "running":
+      return "border-live bg-live text-on-live animate-pulse motion-reduce:animate-none";
+    case "completed":
+      return "border-ink bg-ink text-canvas";
+    case "failed":
+      return "border-err bg-err text-canvas";
+    case "requeued":
+      return "border-warn border-dashed bg-surface text-warn";
+    default:
+      return "border-rule bg-raised text-mute";
+  }
+}
+
+function ChunkTile({ chunk }: { chunk: any }) {
+  const node = chunk.node_id?.substring(0, 8) || "unassigned";
+  const label = `Chunk ${chunk.chunk_index} · ${chunk.status || "pending"} · node ${node} · ${chunk.progress || 0}%`;
+  return (
+    <div
+      title={label}
+      aria-label={label}
+      className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[2px] border font-mono text-[10px] tabular-nums ${tileClass(chunk.status)}`}
+    >
+      {chunk.chunk_index}
+      {chunk.status === "running" && (chunk.progress || 0) > 0 && (
+        <span className="absolute bottom-0 left-0 h-[3px] bg-ink/60" style={{ width: `${chunk.progress}%` }} />
+      )}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, iconBg, iconColor }: any) {
+function Legend() {
+  const items: { status: string; label: string }[] = [
+    { status: "pending", label: "Pending" },
+    { status: "assigned", label: "Assigned" },
+    { status: "running", label: "Running" },
+    { status: "completed", label: "Done" },
+    { status: "failed", label: "Failed" },
+    { status: "requeued", label: "Requeued" },
+  ];
   return (
-    <motion.div
-      className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      whileHover={{ y: -4, boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-slate-400 text-sm font-medium">{label}</span>
-        <div className={`p-2 rounded-lg ${iconBg} ${iconColor}`}>
-          {icon}
-        </div>
-      </div>
-      <div className="text-3xl font-black text-white">{value}</div>
-    </motion.div>
+    <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-rule px-5 py-3">
+      {items.map((it) => (
+        <span key={it.status} className="label inline-flex items-center gap-2">
+          <span
+            className={`inline-block h-3 w-3 rounded-[2px] border ${tileClass(it.status).replace(/animate-pulse|motion-reduce:animate-none/g, "")}`}
+          />
+          {it.label}
+        </span>
+      ))}
+    </div>
   );
 }

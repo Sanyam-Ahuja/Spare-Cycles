@@ -4,8 +4,9 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { CampuGridAPI } from "@/lib/api";
 import Link from "next/link";
-import { Download, Eye, Trash2, FileText, Image, Archive, FolderDown, Search, Filter } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowUpRight } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Page, PageHeader, Panel, Stat, StatRow, StatusPill, Tag, Empty, Loading } from "@/components/kit";
 
 export default function ResultsIndexPage() {
   const { data: session } = useSession();
@@ -19,147 +20,79 @@ export default function ResultsIndexPage() {
 
   const jobs = jobsResponse?.jobs || [];
   const completedJobs = jobs.filter((j: any) => ["completed", "failed", "cancelled"].includes(j.status));
+  const succeeded = completedJobs.filter((j: any) => j.status === "completed").length;
 
   return (
-    <div className="p-8 relative min-h-screen">
-      {/* 3D Background Graphics */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <motion.div
-          className="absolute top-40 right-60 w-52 h-52 border-2 border-emerald-400/35 rounded-full shadow-lg shadow-emerald-400/25"
-          animate={{ rotateX: [0, 360], rotateZ: [0, 180, 360] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-        <motion.div
-           className="absolute bottom-40 right-20 w-44 h-44 border-2 border-emerald-400/30"
-           animate={{ rotateY: [0, 360], y: [-15, 15, -15] }}
-           transition={{ rotateY: { duration: 16, repeat: Infinity, ease: "linear" }, y: { duration: 6, repeat: Infinity, ease: "easeInOut" } }}
-           style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-      </div>
+    <Page>
+      <PageHeader title="Results" sub="Finished jobs. Open one to preview and download its output." />
 
-      <div className="relative z-10 flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Results</h1>
-          <p className="text-slate-400">Download and manage your completed job outputs.</p>
-        </div>
-        <div className="flex gap-4">
-           <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={16} />
-              <input 
-                type="text" 
-                placeholder="Find output..." 
-                className="pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all w-64"
-              />
-           </div>
-           <button className="px-4 py-2 bg-slate-800/50 border border-slate-800 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors">
-              <Filter size={18} />
-           </button>
-        </div>
-      </div>
+      <StatRow cols={3} className="mb-6">
+        <Stat label="Finished" value={completedJobs.length} />
+        <Stat label="Completed" value={succeeded} accent={succeeded > 0} />
+        <Stat label="Failed or cancelled" value={completedJobs.length - succeeded} />
+      </StatRow>
 
-      {/* Storage Usage (Dummy for now) */}
-      <motion.div
-        className="relative z-10 bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6 mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-white">Grid Storage</h3>
-            <p className="text-slate-400 text-sm">4.7 GB of 50 GB used</p>
-          </div>
-          <div className="text-emerald-400 text-2xl font-bold">9.4%</div>
-        </div>
-        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-            initial={{ width: "0%" }}
-            animate={{ width: "9.4%" }}
-            transition={{ duration: 1.5 }}
-          />
-        </div>
-      </motion.div>
-
-      {/* Results List */}
-      <div className="relative z-10 grid grid-cols-1 gap-4">
+      <Panel title="Finished jobs" aside={<span className="num text-xs">{completedJobs.length} shown</span>} bodyClassName="">
         {isLoading ? (
-          <div className="py-20 text-center text-slate-500 animate-pulse font-mono tracking-widest uppercase text-xs">
-            Scanning result metadata...
-          </div>
+          <Loading label="Loading results" />
         ) : completedJobs.length === 0 ? (
-          <div className="py-20 text-center bg-slate-950/30 border border-dashed border-slate-800 rounded-xl">
-             <p className="text-slate-500 mb-4">No completed workloads found.</p>
-             <Link href="/submit" className="text-emerald-400 hover:text-emerald-300 underline font-bold uppercase tracking-widest text-[10px]">Start Processing</Link>
-          </div>
+          <Empty
+            title="No finished jobs yet"
+            action={
+              <Link href="/submit" className="btn btn-outline btn-sm">
+                Submit job
+              </Link>
+            }
+          >
+            Outputs appear here once every chunk has run and been assembled.
+          </Empty>
         ) : (
-          completedJobs.map((job: any, index: number) => (
-            <motion.div
-              key={job.id}
-              className="bg-slate-900/30 backdrop-blur-xl border border-slate-800 rounded-xl p-6 hover:border-emerald-500/30 transition-all group"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-lg ${getIconBg(job.type || "archive")}`}>
-                    {getFileIcon(job.type || "archive")}
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold mb-1 truncate max-w-xs">{job.input_path}</h3>
-                    <div className="flex items-center gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                       <span className="font-mono">{job.id.substring(0, 12)}</span>
-                       <span>•</span>
-                       <span className={`px-1.5 py-0.5 rounded border ${job.status === 'completed' ? 'text-green-400 border-green-400/20 bg-green-500/10' : 'text-red-400 border-red-400/20 bg-red-500/10'}`}>
-                         {job.status}
-                       </span>
-                       <span>•</span>
-                       <span>₹{((job.total_chunks || 1) * 0.45).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                   <Link href={`/results/${job.id}`}>
-                      <button className="p-2 bg-slate-800/50 border border-slate-700 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white hover:border-emerald-500 transition-all">
-                        <Eye size={18} />
-                      </button>
-                   </Link>
-                   <button className="p-2 bg-slate-800/50 border border-slate-700 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-emerald-400 hover:border-emerald-500 transition-all">
-                      <Download size={18} />
-                   </button>
-                   <button className="p-2 bg-slate-800/50 border border-slate-700 text-slate-400 rounded-lg hover:bg-slate-800 hover:text-red-400 hover:border-red-500 transition-all">
-                      <Trash2 size={18} />
-                   </button>
-                </div>
-              </div>
-            </motion.div>
-          ))
+          <div className="overflow-x-auto">
+            <table className="table-ruled">
+              <thead>
+                <tr>
+                  <th>Job</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th className="!text-right">Chunks</th>
+                  <th>Finished</th>
+                  <th className="!text-right">Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedJobs.map((job: any) => (
+                  <tr key={job.id}>
+                    <td>
+                      <div className="max-w-[260px] truncate text-[14px] text-ink">{job.input_path}</div>
+                      <div className="num text-[11px] text-mute">{job.id.substring(0, 12)}</div>
+                    </td>
+                    <td>
+                      <Tag>{(job.type || "unknown").replace(/_/g, " ")}</Tag>
+                    </td>
+                    <td>
+                      <StatusPill status={job.status} />
+                    </td>
+                    <td className="num text-right text-ink-2">{job.total_chunks ?? "—"}</td>
+                    <td className="whitespace-nowrap text-mute">
+                      {job.updated_at || job.created_at
+                        ? formatDistanceToNow(new Date(job.updated_at || job.created_at), { addSuffix: true })
+                        : "—"}
+                    </td>
+                    <td className="text-right">
+                      <Link
+                        href={`/results/${job.id}`}
+                        className="link inline-flex items-center gap-1 whitespace-nowrap text-sm"
+                      >
+                        View <ArrowUpRight size={13} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
-    </div>
+      </Panel>
+    </Page>
   );
-}
-
-function getFileIcon(type: string) {
-  switch (type?.toLowerCase()) {
-    case "video":
-      return <Archive className="w-5 h-5 text-purple-400" />;
-    case "image":
-      return <Image className="w-5 h-5 text-green-400" />;
-    case "text":
-      return <FileText className="w-5 h-5 text-emerald-400" />;
-    default:
-      return <Archive className="w-5 h-5 text-slate-400" />;
-  }
-}
-
-function getIconBg(type: string) {
-  switch (type?.toLowerCase()) {
-    case "video": return "bg-purple-500/20";
-    case "image": return "bg-green-500/20";
-    case "text": return "bg-emerald-500/20";
-    default: return "bg-slate-500/20";
-  }
 }

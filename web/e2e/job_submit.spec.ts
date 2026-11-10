@@ -7,7 +7,7 @@ test.describe('Job Setup and Monitoring', () => {
   test('submit page requires auth', async ({ page }) => {
     // If we try to go to submit without auth, middleware/layout should redirect to login
     await page.goto('/submit');
-    await page.waitForURL('**/login');
+    await page.waitForURL('**/login**');
   });
 
   // Example test assuming backend mocks
@@ -25,6 +25,6 @@ test.describe('Job Setup and Monitoring', () => {
     await page.goto('/submit');
     
     // We should see the dropzone text as the session is authenticated
-    await expect(page.getByText(/Drag & drop files here/i)).toBeVisible();
+    await expect(page.getByText(/Drop files here/i)).toBeVisible();
   });
 });

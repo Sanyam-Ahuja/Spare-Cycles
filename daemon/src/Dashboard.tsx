@@ -33,7 +33,7 @@ export default function Dashboard({ isActive, toggleActive, hwProfile }: any) {
             Node Dashboard
           </h1>
           <p style={{ margin: "6px 0 0", color: C.muted, fontSize: "0.875rem" }}>
-            Manage your active contribution to the CampuGrid network.
+            Manage your active contribution to the SpareCycles network.
           </p>
         </div>
 

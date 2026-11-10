@@ -1,43 +1,31 @@
-campusgrid.sahuja.in {
+sparecycles.sahuja.in {
     encode gzip
 
-    # Routes to FastAPI Backend
+    # FastAPI: REST + WebSockets (/api/v1/ws/...), API docs, health
     handle /api/v1/* {
         reverse_proxy server:8000
     }
-
-    handle /ws/* {
-        reverse_proxy server:8000
-    }
-
     handle /docs* {
         reverse_proxy server:8000
     }
-
     handle /redoc* {
         reverse_proxy server:8000
     }
-
+    handle /openapi.json {
+        reverse_proxy server:8000
+    }
     handle /health {
         reverse_proxy server:8000
     }
 
-    handle /metrics {
-        reverse_proxy server:8000
-    }
-
-    # Routes to MinIO Web Console
-    handle /minio/* {
-        reverse_proxy minio:9001
-    }
-
-    # All other routes go to Next.js Web App
+    # Everything else: Next.js web app
     handle {
         reverse_proxy web:3000
     }
 }
 
-s3-campusgrid.sahuja.in {
-    # Public S3 endpoint for presigned URLs (contributor node file access)
+s3-sparecycles.sahuja.in {
+    # Public S3 endpoint for presigned URLs (contributor node file access).
+    # The Host header is passed through unchanged, which SigV4 signatures require.
     reverse_proxy minio:9000
 }

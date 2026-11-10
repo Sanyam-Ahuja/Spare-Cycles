@@ -5,19 +5,19 @@ test.describe('Marketing & Auth Navigation', () => {
     await page.goto('/');
     
     // Check main value prop
-    await expect(page.getByText(/The unified Compute network/i)).toBeVisible();
+    await expect(page.getByText(/idle compute, put to work/i)).toBeVisible();
     
     // Check call to actions
-    await expect(page.getByRole('link', { name: /Start Computing/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /View Pricing/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Submit a job/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /Try the sample scene/i }).first()).toBeVisible();
   });
 
   test('pricing page renders correctly', async ({ page }) => {
     await page.goto('/pricing');
     
-    await expect(page.getByText(/Compute cost, crushed/i)).toBeVisible();
-    await expect(page.getByText(/Standard Compute/i)).toBeVisible();
-    await expect(page.getByText(/Accelerated GPU/i)).toBeVisible();
+    await expect(page.getByText(/Pay for the compute you use/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /CPU compute/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /GPU compute/i })).toBeVisible();
   });
 
   test('login page has continue with google', async ({ page }) => {

@@ -30,7 +30,7 @@ type WsStream = tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsSt
 type WsWriter = futures_util::stream::SplitSink<WsStream, Message>;
 
 pub async fn connect_and_listen(app_handle: tauri::AppHandle, node_id: String, auth_token: String) {
-    let base_url = option_env!("CAMPUGRID_WS_URL").unwrap_or("ws://localhost:8000");
+    let base_url = option_env!("CAMPUGRID_WS_URL").unwrap_or("wss://sparecycles.sahuja.in");
     let url = format!("{}/api/v1/ws/node/{}?token={}", base_url, node_id, auth_token);
 
     use tauri::Manager;

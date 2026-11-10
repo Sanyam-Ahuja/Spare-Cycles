@@ -33,11 +33,17 @@ async def lifespan(app: FastAPI):
 
     # Ensure MinIO buckets exist
     logger.info("🪣 Ensuring MinIO buckets...")
-    try:
-        minio_service.ensure_buckets()
-        logger.info("✅ MinIO buckets ready")
-    except Exception as e:
-        logger.warning(f"⚠️ MinIO not available: {e}. Start infra with 'docker compose up'")
+    # MinIO may still be starting (it has no healthcheck in prod), so retry for ~60 s.
+    for attempt in range(30):
+        try:
+            minio_service.ensure_buckets()
+            logger.info("✅ MinIO buckets ready")
+            break
+        except Exception as e:
+            if attempt == 29:
+                logger.warning(f"⚠️ MinIO not available: {e}. Start infra with 'docker compose up'")
+            else:
+                await asyncio.sleep(2)
 
     # Sentry init
     # ── Redis PubSub Listener (customer job updates) ──

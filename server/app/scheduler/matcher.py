@@ -48,6 +48,11 @@ def score_node(resources: dict, chunk_spec: dict) -> float:
     # Priority for highly reliable nodes
     score += (resources.get("reliability_score", 0.8) * 40.0)
 
+    # GPU-preferring workloads (e.g. Cycles renders) can fall back to CPU, so
+    # a GPU is a bonus rather than a hard requirement.
+    if chunk_spec.get("gpu_required") and resources.get("gpu_vram_gb", 0) > 0:
+        score += 30.0 + min(resources.get("gpu_vram_gb", 0), 24.0)
+
     return score
 
 

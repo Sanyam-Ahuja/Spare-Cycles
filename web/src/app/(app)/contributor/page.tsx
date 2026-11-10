@@ -4,9 +4,9 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { CampuGridAPI } from "@/lib/api";
 import Link from "next/link";
-import { Cpu, Plus, RefreshCw, Wifi, WifiOff, Copy, Check } from "lucide-react";
-import clsx from "clsx";
+import { Plus, RefreshCw, Copy, Check, KeyRound } from "lucide-react";
 import { useState } from "react";
+import { Page, PageHeader, Panel, Stat, StatRow, StatusPill, Tag, Empty, Loading } from "@/components/kit";
 
 export default function ContributorPage() {
   const { data: session } = useSession();
@@ -26,70 +26,58 @@ export default function ContributorPage() {
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="flex justify-between items-end pb-8 border-b border-border">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Contributor Nodes</h1>
-          <p className="text-text-muted mt-2 text-lg">
-            Manage your machines and track earnings from the CampuGrid network.
-          </p>
-        </div>
-        <Link
-          href="/contributor/register"
-          className="flex items-center gap-2 bg-primary text-white font-medium py-2.5 px-5 rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
-        >
-          <Plus size={20} />
-          Register Node
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title="Your nodes"
+        sub="Machines you've connected to SpareCycles, and what they've earned."
+        actions={
+          <Link href="/contributor/register" className="btn btn-primary">
+            <Plus size={16} />
+            Register node
+          </Link>
+        }
+      />
 
-      {/* Earnings Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass rounded-2xl p-6 relative overflow-hidden group hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] transition-all">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-success/10 rounded-full blur-[30px]" />
-          <p className="text-text-muted font-medium mb-1">Total Earned</p>
-          <h3 className="text-3xl font-bold text-success">${(earnings?.total_earned || 0).toFixed(2)}</h3>
-        </div>
-        <div className="glass rounded-2xl p-6 relative overflow-hidden group hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] transition-all">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-[30px]" />
-          <p className="text-text-muted font-medium mb-1">GPU Hours Contributed</p>
-          <h3 className="text-3xl font-bold text-primary">{(earnings?.total_gpu_hours || 0).toFixed(1)}</h3>
-        </div>
-        <div className="glass rounded-2xl p-6 relative overflow-hidden group hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] transition-all">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-secondary/10 rounded-full blur-[30px]" />
-          <p className="text-text-muted font-medium mb-1">Current Rate</p>
-          <h3 className="text-3xl font-bold text-secondary">${(earnings?.current_rate_per_hour || 0).toFixed(3)}<span className="text-lg text-text-muted">/hr</span></h3>
-        </div>
-      </div>
+      <StatRow cols={3} className="mb-6">
+        <Stat label="Total earned" value={`$${(earnings?.total_earned || 0).toFixed(2)}`} accent />
+        <Stat label="GPU hours contributed" value={(earnings?.total_gpu_hours || 0).toFixed(1)} unit="h" />
+        <Stat label="Current rate" value={`$${(earnings?.current_rate_per_hour || 0).toFixed(3)}`} unit="/h" />
+      </StatRow>
 
-      {/* Nodes List */}
-      <div className="glass rounded-2xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Your Nodes</h2>
-          <button onClick={() => refetch()} className="text-text-muted hover:text-white transition-colors">
-            <RefreshCw size={18} />
-          </button>
-        </div>
-
+      <Panel
+        title="Nodes"
+        aside={
+          <>
+            {nodes && nodes.length > 0 && <span className="num text-xs">{nodes.length} registered</span>}
+            <button onClick={() => refetch()} className="btn btn-ghost h-8 w-8 p-0" aria-label="Refresh nodes">
+              <RefreshCw size={14} />
+            </button>
+          </>
+        }
+        bodyClassName=""
+      >
         {isLoading ? (
-          <div className="px-6 py-12 text-center text-text-muted">Loading nodes...</div>
+          <Loading label="Loading nodes" />
         ) : !nodes || nodes.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <Cpu size={48} className="text-text-muted mx-auto mb-4" />
-            <p className="text-text-muted mb-4">No nodes registered yet.</p>
-            <Link href="/contributor/register" className="text-primary hover:underline">
-              Register your first node
-            </Link>
-          </div>
+          <Empty
+            title="No nodes registered yet"
+            action={
+              <Link href="/contributor/register" className="btn btn-outline btn-sm">
+                Register your first node
+              </Link>
+            }
+          >
+            Install the desktop app on a machine with a spare GPU. It shows up here once it signs in.
+          </Empty>
         ) : (
-          <div className="divide-y divide-border">
+          <div className={`grid grid-cols-1 gap-px bg-rule [&>*]:bg-surface ${nodes.length > 1 ? "lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2" : ""}`}>
             {nodes.map((node: any) => (
               <NodeCard key={node.id} node={node} api={api} />
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </Panel>
+    </Page>
   );
 }
 
@@ -121,71 +109,68 @@ function NodeCard({ node, api }: { node: any; api: CampuGridAPI }) {
     }
   };
 
+  const specs: [string, string][] = [
+    ["GPU", node.gpu_model || "—"],
+    ["VRAM", `${node.gpu_vram_gb} GB`],
+    ["CPU", `${node.cpu_cores} cores`],
+    ["RAM", `${node.ram_gb} GB`],
+    ["GPU hours", `${node.total_gpu_hours.toFixed(1)} h`],
+    ["Node ID", node.id.substring(0, 12)],
+  ];
+
   return (
-    <div className="px-6 py-5 hover:bg-white/5 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className={clsx(
-            "w-3 h-3 rounded-full",
-            isOnline ? "bg-success animate-pulse" : "bg-text-muted"
-          )} />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-white">{node.hostname}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20">
-                {node.gpu_model}
-              </span>
-            </div>
-            <div className="text-sm text-text-muted flex items-center gap-3 mt-1">
-              <span>{node.cpu_cores} cores</span>
-              <span>•</span>
-              <span>{node.ram_gb} GB RAM</span>
-              <span>•</span>
-              <span>{node.gpu_vram_gb} GB VRAM</span>
-              <span>•</span>
-              {isOnline ? (
-                <span className="flex items-center gap-1 text-success"><Wifi size={12} /> Online</span>
-              ) : (
-                <span className="flex items-center gap-1"><WifiOff size={12} /> Offline</span>
-              )}
-            </div>
+    <article className="flex min-w-0 flex-col">
+      <div className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4">
+        <div className="min-w-0">
+          <div className="truncate font-mono text-[15px] font-medium text-ink">{node.hostname}</div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <StatusPill status={isOnline ? node.status : "offline"} />
+            {node.gpu_model && <Tag>{node.gpu_model}</Tag>}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-text-muted">Earned</div>
-          <div className="font-bold text-success">${node.total_earned.toFixed(2)}</div>
-          <div className="text-xs text-text-muted">{node.total_gpu_hours.toFixed(1)} GPU hrs</div>
+        <div className="shrink-0 text-right">
+          <div className="label">Earned</div>
+          <div className="num mt-1 text-xl text-ink">${node.total_earned.toFixed(2)}</div>
         </div>
       </div>
 
-      {/* Token Section */}
-      <div className="mt-3 flex items-center gap-3">
-        <span className="text-xs text-text-muted">Node ID: <code className="bg-white/5 px-1.5 py-0.5 rounded">{node.id.substring(0, 12)}...</code></span>
-        <button
-          onClick={handleRegenToken}
-          disabled={loading}
-          className="text-xs text-primary hover:text-primary/80 transition-colors underline underline-offset-2"
-        >
-          {loading ? "Generating..." : "Get Auth Token"}
+      <dl className="px-5">
+        {specs.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-4 border-b border-dashed border-rule py-2 last:border-b-0">
+            <dt className="label">{k}</dt>
+            <dd className="num min-w-0 truncate text-right text-[13px] text-ink">{v}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-auto border-t border-rule px-5 py-3">
+        <button onClick={handleRegenToken} disabled={loading} className="btn btn-ghost btn-sm -ml-3">
+          <KeyRound size={13} />
+          {loading ? "Generating…" : "Get auth token"}
         </button>
-      </div>
-
-      {showToken && token && (
-        <div className="mt-3 p-3 bg-background rounded-xl border border-border">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-white">Node JWT Token</span>
-            <button onClick={copyToken} className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
-              {copied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
-            </button>
+        {showToken && token && (
+          <div className="mt-2">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="label">Node token</span>
+              <button onClick={copyToken} className="btn btn-outline btn-sm">
+                {copied ? (
+                  <>
+                    <Check size={13} className="text-ok" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} /> Copy
+                  </>
+                )}
+              </button>
+            </div>
+            <code className="num block max-h-20 overflow-y-auto break-all rounded-[2px] border border-rule bg-raised p-2 text-[11px] text-ink-2">
+              {token}
+            </code>
+            <p className="mt-2 text-xs text-mute">Paste this into the SpareCycles desktop app&apos;s setup screen.</p>
           </div>
-          <code className="text-xs text-text-muted break-all block max-h-20 overflow-y-auto">
-            {token}
-          </code>
-          <p className="text-xs text-text-muted mt-2">
-            Paste this token into your CampuGrid Tauri app&apos;s setup screen.
-          </p>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </article>
   );
 }

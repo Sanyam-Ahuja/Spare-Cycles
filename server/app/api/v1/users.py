@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import (
     TokenPayload,
@@ -35,8 +36,8 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
             detail="Email already registered",
         )
 
-    # Hardcode admin provision rule; default everyone else to BOTH
-    assigned_role = UserRole.ADMIN if data.email == "sanyamcodeup@gmail.com" else UserRole.BOTH
+    # Admin is only granted through verified Google sign-in, never a password signup.
+    assigned_role = UserRole.BOTH
 
     user = User(
         email=data.email,
@@ -98,6 +99,13 @@ async def google_auth(data: GoogleAuthRequest, db: AsyncSession = Depends(get_db
         )
 
     google_user = resp.json()
+    # The token must have been issued to our OAuth client, not some other app.
+    expected_aud = get_settings().GOOGLE_CLIENT_ID
+    if expected_aud and google_user.get("aud") != expected_aud:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google token was issued for a different client",
+        )
     email = google_user.get("email")
     name = google_user.get("name", email.split("@")[0])
 

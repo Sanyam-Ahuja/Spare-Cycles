@@ -1,246 +1,206 @@
-"use client";
-
-import { motion } from "motion/react";
-import { Network, Cpu, Database, Globe, ArrowRight, Zap, ShieldCheck, Layers, Server } from "lucide-react";
 import Link from "next/link";
-import { MarketingHeader } from "@/components/MarketingHeader";
+import { ArrowRight, Download } from "lucide-react";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
+import { ChunkFanout } from "@/components/marketing/ChunkFanout";
+
+const STEPS = [
+  { name: "Upload", body: "Drop a .blend, a .py or .ipynb, or an archive of your project." },
+  { name: "Detect", body: "The pipeline works out the workload type, framework and resources. Gemini fills in what heuristics miss." },
+  { name: "Containerize", body: "A pre-verified image is matched or built, after a scan for malicious code and miners." },
+  { name: "Split", body: "Frame ranges for renders, ranks for training, shards for data, domains for simulations." },
+  { name: "Dispatch", body: "Each chunk goes to the best-ranked online node. LAN peers are grouped for multi-node jobs." },
+  { name: "Assemble", body: "Outputs are merged into one video, model, dataset or result set you download." },
+];
+
+const WORKLOADS = [
+  { type: "3D render", tool: "Blender", input: ".blend", split: "frame ranges", output: "frames + assembled video" },
+  { type: "ML training", tool: "PyTorch", input: ".py / .ipynb", split: "ranks (DDP or Local-SGD)", output: "weights + checkpoints" },
+  { type: "Data processing", tool: "Python", input: "script + data archive", split: "shards", output: "merged dataset" },
+  { type: "Simulation", tool: "OpenFOAM / MPI", input: "case archive", split: "domains", output: "merged results" },
+];
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen bg-slate-950 overflow-hidden selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-canvas text-ink">
       <MarketingHeader />
 
-      {/* 3D Background Graphics */}
-      <div className="absolute inset-0 z-0">
-        {/* Grid pattern */}
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(16, 185, 129, 0.05) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(16, 185, 129, 0.05) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 60px",
-            transform: "perspective(500px) rotateX(60deg)",
-            transformOrigin: "center center",
-          }}
-          animate={{
-            backgroundPosition: ["0px 0px", "60px 60px"],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        />
-
-        {/* 3D geometric shapes */}
-        <motion.div
-           className="absolute top-1/4 right-1/4 w-64 h-64 border-2 border-emerald-500/25 rounded-full shadow-lg shadow-emerald-500/10"
-           animate={{ rotateY: [0, 360], rotateX: [0, 360] }}
-           transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-           style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-
-        <motion.div
-           className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-full blur-3xl"
-           animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.4, 0.2] }}
-           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        <motion.div
-          className="absolute bottom-1/3 right-1/3 w-40 h-40 border-2 border-emerald-500/20"
-          style={{
-            clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-            transform: "perspective(1000px)",
-            transformStyle: "preserve-3d"
-          }}
-          animate={{ rotateY: [0, 360], y: [-20, 20, -20] }}
-          transition={{ rotateY: { duration: 20, repeat: Infinity, ease: "linear" }, y: { duration: 6, repeat: Infinity, ease: "easeInOut" } }}
-        />
-      </div>
-
-      {/* Hero Section */}
-      <main className="relative z-10 flex flex-col xl:flex-row items-center justify-between min-h-[calc(100vh-80px)] px-8 sm:px-16 max-w-7xl mx-auto gap-20 py-20">
-        <motion.div
-          className="flex-1"
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-8 backdrop-blur-md">
-             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-             Nodes Online: 1,247+
+      {/* Hero */}
+      <section className="border-b border-rule">
+        <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-4 py-12 sm:px-8 md:py-20 lg:grid-cols-[1fr_1.08fr] lg:gap-14">
+          <div>
+            <h1 className="max-w-[13ch] text-[44px] font-semibold leading-[0.98] tracking-[-0.04em] sm:text-[60px] xl:text-[72px]">
+              Your campus&apos;s idle compute, put to work.
+            </h1>
+            <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-ink-2">
+              SpareCycles splits a Blender render, a training run or a data job into chunks and runs them on lab
+              machines and student laptops that would otherwise sit idle. Contributors earn credits for every chunk
+              their machine finishes.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/submit" className="btn btn-primary btn-lg">
+                Submit a job
+                <ArrowRight size={16} />
+              </Link>
+              <Link href="/submit?sample=1" className="btn btn-outline btn-lg">
+                Try the sample scene
+              </Link>
+            </div>
+            <dl className="mt-10 grid max-w-[480px] grid-cols-3 border-t border-rule pt-4">
+              <div>
+                <dt className="label">Workloads</dt>
+                <dd className="num mt-1 text-sm">4 types</dd>
+              </div>
+              <div>
+                <dt className="label">Retries</dt>
+                <dd className="num mt-1 text-sm">7 per chunk</dd>
+              </div>
+              <div>
+                <dt className="label">Watchdog</dt>
+                <dd className="num mt-1 text-sm">every 30 s</dd>
+              </div>
+            </dl>
           </div>
 
-          <h1 className="text-6xl sm:text-8xl font-black text-white leading-[0.9] mb-8">
-            The unified<br />
-            <span className="text-emerald-400">Compute</span><br />
-            network.
-          </h1>
-
-          <p className="text-slate-400 text-lg max-w-xl mb-10 leading-relaxed">
-            Harness the idle power of millions of campus computers. Train multi-node ML models, render 3D scenes, and run scientific simulations at 1/10th the cost.
-          </p>
-
-          <div className="flex flex-wrap gap-6">
-            <Link href="/login">
-              <motion.button
-                className="px-10 py-5 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/20"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Start Computing →
-              </motion.button>
-            </Link>
-            <Link href="/pricing">
-              <motion.button
-                className="px-10 py-5 border-2 border-slate-800 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-900 transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                View Pricing
-              </motion.button>
-            </Link>
-          </div>
-
-          {/* Stats Panel */}
-          <motion.div
-            className="mt-16 p-8 bg-slate-900/40 backdrop-blur-xl border border-slate-800 rounded-3xl max-w-md shadow-2xl relative overflow-hidden group"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-               <Zap size={64} className="text-emerald-500" />
+          <figure className="panel overflow-hidden">
+            <figcaption className="flex items-center justify-between gap-3 border-b border-rule px-4 py-2.5">
+              <span className="label !text-ink-2">job 7f3a · render · 16 chunks · 5 nodes</span>
+              <span className="label hidden sm:inline">schematic</span>
+            </figcaption>
+            <div className="bg-grid px-3 py-4 sm:px-5 sm:py-6">
+              <ChunkFanout />
             </div>
-            <div className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-4">≈ GRID PERFORMANCE</div>
-
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Aggregate Flops</span>
-                  <span className="text-white font-mono text-sm">2.4 PFLOPS</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                    initial={{ width: "0%" }}
-                    animate={{ width: "73%" }}
-                    transition={{ duration: 1.5, delay: 0.5 }}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Network Saving Points</span>
-                  <span className="text-emerald-400 font-mono text-sm font-black">₹4.2M SAVED</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-emerald-500"
-                    initial={{ width: "0%" }}
-                    animate={{ width: "94%" }}
-                    transition={{ duration: 1.5, delay: 0.7 }}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Orbiting Circles System (Visual) */}
-        <div className="flex-1 relative hidden xl:block w-full h-[600px] items-center justify-center">
-           <OrbitingCircles />
+          </figure>
         </div>
-      </main>
-
-      {/* Features Grid */}
-      <section className="relative z-10 py-32 px-8 bg-slate-950/80 border-y border-slate-900">
-         <div className="max-w-7xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-12">
-               <FeatureCard 
-                  icon={ShieldCheck}
-                  title="Resilient Orchestration"
-                  desc="Automated fault recovery via Watchdog peers ensures your workload never stalls."
-               />
-               <FeatureCard 
-                  icon={Layers}
-                  title="Gemini AI Pipeline"
-                  desc="Dynamic dependency mapping and containerization for zero-config ML execution."
-               />
-               <FeatureCard 
-                  icon={Zap}
-                  title="Low-Latency Peers"
-                  desc="P2P weight averaging optimized for high-speed university backbone networks."
-               />
-            </div>
-         </div>
       </section>
+
+      {/* How it works */}
+      <section id="how" className="scroll-mt-16 border-b border-rule">
+        <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-8 md:py-24">
+          <div className="grid gap-6 md:grid-cols-[1fr_2fr] md:items-end">
+            <h2 className="text-[32px] font-semibold tracking-[-0.03em] sm:text-[40px]">How a job runs</h2>
+            <p className="max-w-[60ch] text-[15px] leading-relaxed text-mute">
+              You upload files. The control plane decides what they are, packages them into a container, cuts the
+              work into chunks and hands each chunk to a machine on the network.
+            </p>
+          </div>
+          <ol className="mt-12 grid grid-cols-1 border-t border-ink sm:grid-cols-2 lg:grid-cols-6">
+            {STEPS.map((s, i) => (
+              <li key={s.name} className="border-b border-rule py-5 sm:pr-6 lg:border-b-0 lg:border-r lg:pl-4 lg:first:pl-0 lg:last:border-r-0">
+                <div className="num text-xs text-mute">{String(i + 1).padStart(2, "0")}</div>
+                <h3 className="mt-3 text-[17px] font-semibold">{s.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-2">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 flex items-start gap-3 border-t border-rule pt-5 text-sm text-ink-2">
+            <span className="mt-1.5 inline-block h-2 w-2 shrink-0 bg-primary" aria-hidden="true" />
+            <span>
+              Machines leave. If a node stops sending heartbeats, the watchdog lowers its reliability score and
+              requeues its chunks on another machine.
+            </span>
+          </p>
+        </div>
+      </section>
+
+      {/* Workloads */}
+      <section id="workloads" className="scroll-mt-16 border-b border-rule bg-surface">
+        <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-8 md:py-24">
+          <h2 className="text-[32px] font-semibold tracking-[-0.03em] sm:text-[40px]">What you can run</h2>
+          <div className="mt-10 overflow-x-auto border-t border-ink">
+            <table className="table-ruled min-w-[680px]">
+              <thead>
+                <tr>
+                  <th className="!pl-0">Workload</th>
+                  <th>Input</th>
+                  <th>Split by</th>
+                  <th>You get back</th>
+                </tr>
+              </thead>
+              <tbody>
+                {WORKLOADS.map((w) => (
+                  <tr key={w.type}>
+                    <td className="!pl-0">
+                      <div className="font-medium">{w.type}</div>
+                      <div className="text-xs text-mute">{w.tool}</div>
+                    </td>
+                    <td className="num text-[13px]">{w.input}</td>
+                    <td className="num text-[13px]">{w.split}</td>
+                    <td className="text-ink-2">{w.output}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Sample scene */}
+      <section className="border-b border-rule">
+        <div className="mx-auto grid max-w-[1240px] gap-8 px-4 py-14 sm:px-8 md:grid-cols-[1.2fr_1fr] md:items-center">
+          <div className="flex gap-5">
+            <SampleThumb />
+            <div>
+              <h2 className="text-[26px] font-semibold tracking-[-0.03em] sm:text-[30px]">No .blend handy?</h2>
+              <p className="mt-2 max-w-[48ch] text-[15px] leading-relaxed text-ink-2">
+                Use our sample scene: a 72-frame animated scene that renders in about two minutes on two laptops.
+              </p>
+              <p className="num mt-3 text-xs text-mute">sparecycles-sample.blend · 1.4 MB · 640×360</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 md:justify-end">
+            <a href="/samples/sparecycles-sample.blend" download className="btn btn-outline btn-lg">
+              <Download size={16} />
+              Download sample
+            </a>
+            <Link href="/submit?sample=1" className="btn btn-ink btn-lg">
+              Use sample &amp; submit
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Two sides */}
+      <section id="contribute" className="scroll-mt-16 border-b border-rule">
+        <div className="mx-auto grid max-w-[1240px] md:grid-cols-2">
+          <div className="border-b border-rule px-4 py-14 sm:px-8 md:border-b-0 md:border-r md:py-20">
+            <div className="label">If you have a job</div>
+            <h2 className="mt-3 text-[28px] font-semibold tracking-[-0.03em] sm:text-[34px]">Spread one job across many machines.</h2>
+            <p className="mt-4 max-w-[48ch] text-[15px] leading-relaxed text-ink-2">
+              Sign in with Google, upload your files and watch every chunk move across the network live. When the
+              last one lands, download the assembled output.
+            </p>
+            <Link href="/submit" className="btn btn-primary mt-8">
+              Submit a job
+              <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div className="px-4 py-14 sm:px-8 md:py-20">
+            <div className="label">If you have a machine</div>
+            <h2 className="mt-3 text-[28px] font-semibold tracking-[-0.03em] sm:text-[34px]">Lend it while you&apos;re not using it.</h2>
+            <p className="mt-4 max-w-[48ch] text-[15px] leading-relaxed text-ink-2">
+              Install the SpareCycles desktop app and switch it on. It runs chunks in local Docker containers, uses
+              your GPU if you have one, and earns credits for each chunk it completes.
+            </p>
+            <Link href="/contributor/register" className="btn btn-outline mt-8">
+              Contribute a machine
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <MarketingFooter />
     </div>
   );
 }
 
-function OrbitingCircles() {
-  const orbitRadius = 180;
-  
-  const orbitingIcons = [
-    { icon: <Cpu className="w-5 h-5" />, angle: 0, speed: 12 },
-    { icon: <Network className="w-5 h-5" />, angle: 60, speed: 15 },
-    { icon: <Globe className="w-5 h-5" />, angle: 120, speed: 10 },
-    { icon: <ShieldCheck className="w-5 h-5" />, angle: 180, speed: 18 },
-    { icon: <Layers className="w-5 h-5" />, angle: 240, speed: 14 },
-    { icon: <Server className="w-5 h-5" />, angle: 300, speed: 11 },
-  ];
-
+/** Tiny 4×3 frame: the sample scene, already chunked. */
+function SampleThumb() {
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full flex items-center justify-center">
-       {/* Center Hub */}
-       <motion.div
-          className="w-24 h-24 bg-emerald-500 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-emerald-500/50 relative z-20"
-          animate={{ rotate: [0, 90, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-       >
-          <Database size={40} />
-       </motion.div>
-
-       {/* Orbit Path */}
-       <div className="absolute w-[360px] h-[360px] border border-emerald-500/10 rounded-full animate-[spin_40s_linear_infinite]" />
-       <div className="absolute w-[440px] h-[440px] border border-emerald-500/5 rounded-full animate-[spin_60s_linear_infinite_reverse]" />
-
-       {orbitingIcons.map((item, idx) => (
-          <motion.div
-            key={idx}
-            className="absolute p-4 bg-slate-900 border border-emerald-500/30 rounded-2xl text-emerald-400 shadow-xl shadow-emerald-500/10"
-            animate={{
-               x: [
-                  Math.cos((item.angle * Math.PI) / 180) * orbitRadius,
-                  Math.cos(((item.angle + 360) * Math.PI) / 180) * orbitRadius,
-               ],
-               y: [
-                  Math.sin((item.angle * Math.PI) / 180) * orbitRadius,
-                  Math.sin(((item.angle + 360) * Math.PI) / 180) * orbitRadius,
-               ],
-            }}
-            transition={{ duration: item.speed, repeat: Infinity, ease: "linear" }}
-          >
-             {item.icon}
-          </motion.div>
-       ))}
-    </div>
-  );
-}
-
-function FeatureCard({ icon: Icon, title, desc }: any) {
-  return (
-    <div className="p-8 bg-slate-900/30 border border-slate-800 rounded-3xl hover:border-emerald-500/30 transition-all group">
-       <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-8 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-          <Icon size={32} />
-       </div>
-       <h3 className="text-xl font-black text-white mb-4 uppercase tracking-widest text-[10px] opacity-60">Architectural Note</h3>
-       <h4 className="text-2xl font-bold text-white mb-4 leading-tight">{title}</h4>
-       <p className="text-slate-400 leading-relaxed text-sm">{desc}</p>
+    <div className="hidden shrink-0 grid-cols-4 gap-[3px] border border-ink bg-surface p-[5px] sm:grid" aria-hidden="true">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <span key={i} className={`h-4 w-4 ${i === 6 ? "bg-primary" : "bg-ink"}`} />
+      ))}
     </div>
   );
 }

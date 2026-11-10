@@ -282,7 +282,7 @@ export default function SetupView({ onComplete }: SetupViewProps) {
           <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-[#10b981] to-[#34d399] flex items-center justify-center shadow-lg shadow-[#10b981]/30 mb-4">
             <span className="font-bold text-white text-2xl">C</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">CampuGrid</h1>
+          <h1 className="text-2xl font-bold text-white">SpareCycles</h1>
           <p className="text-[#64748b] mt-2 text-sm">
             Sign in to start contributing your compute power.
           </p>

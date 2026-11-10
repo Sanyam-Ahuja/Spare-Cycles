@@ -3,6 +3,8 @@
 import ast
 import io
 import logging
+import os
+import tempfile
 import zipfile
 from dataclasses import dataclass
 
@@ -39,19 +41,69 @@ class JobProfile:
 
 # ── Analyzers ──────────────────────────────────────────────────
 
+DEFAULT_FRAME_RANGE = (1, 250)
+MAX_RENDER_FRAMES = 1000
+
+
+def read_blend_frame_range(data: bytes) -> tuple[int, int]:
+    """Return the active scene's (frame_start, frame_end) from .blend bytes.
+
+    Uses blender-asset-tracer, a pure-Python .blend reader, so no Blender is
+    needed on the server. Falls back to DEFAULT_FRAME_RANGE if the file can't
+    be parsed. Very long ranges are capped at MAX_RENDER_FRAMES.
+    """
+    path = None
+    try:
+        import pathlib
+
+        from blender_asset_tracer import blendfile
+
+        with tempfile.NamedTemporaryFile(suffix=".blend", delete=False) as tf:
+            tf.write(data)
+            path = tf.name
+        bf = blendfile.BlendFile(pathlib.Path(path))
+        try:
+            scene = None
+            glob = bf.find_blocks_from_code(b"GLOB")
+            if glob:
+                scene = glob[0].get_pointer(b"curscene")
+            if scene is None:
+                scenes = bf.find_blocks_from_code(b"SC")
+                scene = scenes[0] if scenes else None
+            if scene is None:
+                return DEFAULT_FRAME_RANGE
+            start = int(scene.get((b"r", b"sfra")))
+            end = int(scene.get((b"r", b"efra")))
+        finally:
+            bf.close()
+        if end < start:
+            return DEFAULT_FRAME_RANGE
+        end = min(end, start + MAX_RENDER_FRAMES - 1)
+        logger.info(f"Blend frame range read from file: {start}-{end}")
+        return start, end
+    except Exception as e:
+        logger.warning(f"Could not read .blend frame range, using defaults: {e}")
+        return DEFAULT_FRAME_RANGE
+    finally:
+        if path:
+            os.unlink(path)
+
+
 def analyze_blend(job_id: str, file_keys: list[str]) -> JobProfile:
     """Analyze a Blender project without external readers like blend-file-reader."""
-    # Since we can't reliably parse .blend binary in Python natively without a huge custom module,
-    # we'll assume standard parameters: Frames 1-250, CYCLES, GPU required.
-    # We are returning a strong confidence profile so the splitter can handle it.
     blend_file = next(k for k in file_keys if k.endswith('.blend'))
+    settings = get_settings()
+    frame_start, frame_end = read_blend_frame_range(
+        minio_service.download_bytes(settings.BUCKET_JOB_INPUTS, blend_file)
+    )
 
     return JobProfile(
         type="render",
         framework="blender",
+        # Cycles falls back to CPU, so a GPU is preferred (scored), not required.
         gpu_required=True,
-        resources=Resources(vram_gb=4.0, ram_gb=8.0, cpu_cores=4),
-        split_params={"frame_start": 1, "frame_end": 250, "minio_key": blend_file}, # Mock defaults until binary parsing
+        resources=Resources(vram_gb=0.0, ram_gb=4.0, cpu_cores=4),
+        split_params={"frame_start": frame_start, "frame_end": frame_end, "minio_key": blend_file},
         confidence=0.8,
         entry_file=blend_file,
     )
@@ -170,13 +222,15 @@ def analyze_zip(job_id: str, file_keys: list[str]) -> JobProfile:
     if blend_files:
         blend_files.sort(key=lambda f: f.count('/'))
         entry_file = blend_files[0]
-        
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+            frame_start, frame_end = read_blend_frame_range(z.read(entry_file))
+
         return JobProfile(
             type="render",
             framework="blender",
             gpu_required=True,
-            resources=Resources(vram_gb=4.0, ram_gb=8.0, cpu_cores=4),
-            split_params={"frame_start": 1, "frame_end": 250, "minio_key": zip_key},
+            resources=Resources(vram_gb=0.0, ram_gb=4.0, cpu_cores=4),
+            split_params={"frame_start": frame_start, "frame_end": frame_end, "minio_key": zip_key},
             confidence=0.9,
             entry_file=entry_file,
         )

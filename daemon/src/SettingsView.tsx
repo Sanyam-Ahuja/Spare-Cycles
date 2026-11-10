@@ -81,7 +81,7 @@ export default function SettingsView() {
               <input type="checkbox" className="mt-1 w-4 h-4 rounded border-border bg-background accent-primary" />
               <div>
                 <span className="block text-sm font-medium text-white mb-1">Launch on startup</span>
-                <span className="block text-xs text-text-muted">Start CampuGrid automatically silently in the system tray.</span>
+                <span className="block text-xs text-text-muted">Start SpareCycles automatically silently in the system tray.</span>
               </div>
             </label>
           </div>

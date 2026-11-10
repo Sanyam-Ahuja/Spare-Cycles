@@ -125,7 +125,7 @@ async fn authenticate(
     name: Option<String>,
     is_register: bool,
 ) -> AuthResult {
-    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("http://localhost:8000/api/v1");
+    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("https://sparecycles.sahuja.in/api/v1");
     let client = reqwest::Client::new();
 
     let result = if is_register {
@@ -198,7 +198,7 @@ async fn auto_register_node(
     user_token: String,
     hw_profile: serde_json::Value,
 ) -> RegisterResult {
-    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("http://localhost:8000/api/v1");
+    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("https://sparecycles.sahuja.in/api/v1");
     let client = reqwest::Client::new();
 
     // Get hostname from OS
@@ -308,7 +308,7 @@ async fn fetch_node_history(app_handle: AppHandle) -> Result<serde_json::Value, 
         return Err("No credentials".to_string());
     }
     
-    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("http://localhost:8000/api/v1");
+    let base_url = option_env!("CAMPUGRID_API_URL").unwrap_or("https://sparecycles.sahuja.in/api/v1");
     let client = reqwest::Client::new();
     
     let res = client.get(format!("{}/nodes/me/{}/history", base_url, node_id))

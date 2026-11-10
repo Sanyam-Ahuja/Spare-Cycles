@@ -1,10 +1,3 @@
 @import "tailwindcss";
-@import "../styles/fonts.css";
 @import "../styles/theme.css";
-
-/* Existing custom utilities if needed, or I can just use the new ones */
-@layer utilities {
-  .glass {
-    @apply bg-slate-900/30 backdrop-blur-xl border border-slate-800;
-  }
-}
+@import "../styles/fanout.css";

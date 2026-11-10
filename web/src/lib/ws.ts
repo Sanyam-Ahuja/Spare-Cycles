@@ -69,7 +69,7 @@ export function useWebSocket(url: string | null) {
   return { connected, messages, send };
 }
 
-// Base WS origin. In production set NEXT_PUBLIC_WS_URL=wss://campusgrid.sahuja.in
+// Base WS origin. In production set NEXT_PUBLIC_WS_URL=wss://sparecycles.sahuja.in
 // (Caddy proxies /api/v1/* — including the WS routes — to the API server).
 const WS_BASE =
   process.env.NEXT_PUBLIC_WS_URL ||

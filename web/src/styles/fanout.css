@@ -1,0 +1,103 @@
+/* Hero schematic (components/marketing/ChunkFanout.tsx). 10s loop. */
+.fanout {
+  --fo-cycle: 10s;
+  font-family: var(--font-mono);
+}
+.fanout .fo-mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.01em; }
+.fanout .fo-small { font-size: 10.5px; }
+.fanout .fo-ink { fill: var(--ink); }
+.fanout .fo-mute { fill: var(--mute); }
+.fanout .fo-err { fill: var(--err); }
+
+.fanout .fo-frame { fill: var(--surface); stroke: var(--ink); stroke-width: 1; }
+.fanout .fo-ghost { fill: none; stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 2 3; }
+.fanout .fo-route { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+.fanout .fo-port { fill: var(--ink); }
+.fanout .fo-node { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1; }
+.fanout .fo-node-dead {
+  fill: none; stroke: var(--err); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0;
+  animation: fo-dead-outline var(--fo-cycle) linear infinite both;
+}
+.fanout .fo-slot { fill: var(--raised); stroke: var(--rule); stroke-width: 1; }
+
+.fanout .fo-lamp { fill: var(--rule-strong); animation: fo-lamp var(--fo-cycle) steps(1, end) infinite both; }
+.fanout .fo-lamp-dead { animation-name: fo-lamp-dead; }
+.fanout .fo-spec-dead { animation: fo-spec var(--fo-cycle) linear infinite both; }
+.fanout .fo-lost { opacity: 0; animation: fo-lost var(--fo-cycle) linear infinite both; }
+.fanout .fo-note { opacity: 0; animation: fo-lost var(--fo-cycle) linear infinite both; }
+
+.fanout .fo-chunk {
+  fill: var(--ink);
+  transform-box: fill-box;
+  transform-origin: 0 0;
+  animation: fo-chunk var(--fo-cycle) cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+.fanout .fo-chunk-requeue { animation-name: fo-chunk-requeue; }
+
+@keyframes fo-chunk {
+  0%   { transform: translate(0, 0) scale(1); fill: var(--ink); }
+  3%   { transform: translate(0, 0) scale(1); fill: var(--live); }
+  11%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--live); }
+  58%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--live); }
+  62%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--ink); }
+  80%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--ink); }
+  90%  { transform: translate(0, 0) scale(1); fill: var(--ink); }
+  100% { transform: translate(0, 0) scale(1); fill: var(--ink); }
+}
+
+@keyframes fo-chunk-requeue {
+  0%   { transform: translate(0, 0) scale(1); fill: var(--ink); }
+  3%   { transform: translate(0, 0) scale(1); fill: var(--live); }
+  11%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--live); }
+  24%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--live); }
+  26%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--err); }
+  33%  { transform: translate(var(--dx), var(--dy)) scale(var(--s)); fill: var(--err); }
+  40%  { transform: translate(var(--dx2), var(--dy2)) scale(var(--s)); fill: var(--live); }
+  64%  { transform: translate(var(--dx2), var(--dy2)) scale(var(--s)); fill: var(--live); }
+  68%  { transform: translate(var(--dx2), var(--dy2)) scale(var(--s)); fill: var(--ink); }
+  80%  { transform: translate(var(--dx2), var(--dy2)) scale(var(--s)); fill: var(--ink); }
+  90%  { transform: translate(0, 0) scale(1); fill: var(--ink); }
+  100% { transform: translate(0, 0) scale(1); fill: var(--ink); }
+}
+
+@keyframes fo-lamp {
+  0%   { fill: var(--rule-strong); }
+  10%  { fill: var(--live); }
+  66%  { fill: var(--ok); }
+  88%  { fill: var(--rule-strong); }
+}
+@keyframes fo-lamp-dead {
+  0%   { fill: var(--rule-strong); }
+  10%  { fill: var(--live); }
+  26%  { fill: var(--err); }
+  88%  { fill: var(--rule-strong); }
+}
+@keyframes fo-lost {
+  0%, 25% { opacity: 0; }
+  27%, 84% { opacity: 1; }
+  87%, 100% { opacity: 0; }
+}
+@keyframes fo-spec {
+  0%, 25% { opacity: 1; }
+  27%, 84% { opacity: 0; }
+  87%, 100% { opacity: 1; }
+}
+@keyframes fo-dead-outline {
+  0%, 25% { opacity: 0; }
+  27%, 84% { opacity: 1; }
+  87%, 100% { opacity: 0; }
+}
+
+/* Reduced motion: a still of the distributed state, with the requeue shown. */
+@media (prefers-reduced-motion: reduce) {
+  .fanout .fo-chunk {
+    animation: none !important;
+    transform: translate(var(--dx), var(--dy)) scale(var(--s));
+    fill: var(--ink);
+  }
+  .fanout .fo-chunk-requeue { transform: translate(var(--dx2), var(--dy2)) scale(var(--s)); fill: var(--live); }
+  .fanout .fo-lamp { animation: none !important; fill: var(--ok); }
+  .fanout .fo-lamp-dead { fill: var(--err); }
+  .fanout .fo-node-dead, .fanout .fo-lost, .fanout .fo-note { animation: none !important; opacity: 1; }
+  .fanout .fo-spec-dead { animation: none !important; opacity: 0; }
+}

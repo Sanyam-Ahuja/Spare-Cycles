@@ -1,166 +1,128 @@
-"use client";
-
-import { MarketingHeader } from "@/components/MarketingHeader";
-import { Check, Database, Zap, Cpu, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
+
+const PLANS = [
+  {
+    title: "CPU compute",
+    desc: "Simulations, data processing and other CPU-bound work.",
+    price: "₹1.49",
+    unit: "per core-hour",
+    features: [
+      "MPI simulations split by domain",
+      "Data jobs split into shards",
+      "Watchdog requeues chunks on node failure",
+      "Pre-verified Python and OpenFOAM images",
+    ],
+  },
+  {
+    title: "GPU compute",
+    desc: "ML training, Blender rendering and parallel GPU workloads.",
+    price: "₹12.50",
+    unit: "per RTX 3090-hour",
+    featured: true,
+    features: [
+      "CUDA 12 PyTorch image",
+      "Blender renders split by frame range",
+      "DDP or Local-SGD for multi-node training",
+      "Priority queue",
+    ],
+  },
+];
+
+const COMPARISON = [
+  { provider: "AWS EC2 p3.2xlarge", cost: "₹224.50" },
+  { provider: "Google Cloud, V100", cost: "₹286.00" },
+  { provider: "Azure NV6", cost: "₹198.25" },
+];
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden pb-32 selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-canvas text-ink">
       <MarketingHeader />
 
-      {/* 3D Background Graphics */}
-      <div className="absolute inset-0 z-0">
-        <motion.div
-           className="absolute top-1/4 right-0 w-[800px] h-[800px] bg-emerald-500/10 blur-[150px] rounded-full"
-           animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
-           transition={{ duration: 15, repeat: Infinity }}
-        />
-        <motion.div
-           className="absolute -bottom-20 -left-20 w-96 h-96 border-2 border-emerald-500/10 rounded-full"
-           animate={{ rotateY: 360 }}
-           transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-           style={{ transform: "perspective(1000px)", transformStyle: "preserve-3d" }}
-        />
-      </div>
-
-      <main className="relative z-10 pt-40 px-8 max-w-7xl mx-auto text-center">
-        <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest mb-8 backdrop-blur-md">
-             Economic Model v2
+      <main>
+        <section className="border-b border-rule">
+          <div className="mx-auto max-w-[1240px] px-4 py-14 sm:px-8 md:py-20">
+            <h1 className="max-w-[16ch] text-[44px] font-semibold leading-[1] tracking-[-0.04em] sm:text-[60px]">
+              Pay for the compute you use.
+            </h1>
+            <p className="mt-6 max-w-[56ch] text-[17px] leading-relaxed text-ink-2">
+              Jobs run on idle campus hardware, so you pay for execution time only. Contributors earn credits for the
+              time their machines spend on your chunks.
+            </p>
           </div>
-          <h1 className="text-6xl md:text-8xl font-black text-white mb-8 leading-[0.9]">
-             Compute cost,<br />
-             <span className="text-emerald-400">crushed.</span>
-          </h1>
-          <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-20 leading-relaxed">
-             By decentralizing workloads onto idle campus hardware, we eliminate cloud tax. Pay only for raw execution.
-          </p>
-        </motion.div>
+        </section>
 
-        <div className="grid md:grid-cols-2 max-w-5xl mx-auto gap-8 mb-24">
-          <PricingCard 
-            title="Standard Compute"
-            desc="Optimal for physics simulations and CPU-based workloads."
-            icon={Cpu}
-            price="₹1.49"
-            unit="per core hour"
-            features={[
-              "Distributed Simulation (MPI)",
-              "Fault-Tolerant Watchdog",
-              "Local SSD caching",
-              "Unlimited Egress"
-            ]}
-          />
-          
-          <PricingCard 
-            title="Accelerated GPU"
-            desc="For ML Training, 3D Rendering, and parallel data streams."
-            icon={Zap}
-            price="₹12.50"
-            unit="per RTX 3090 hr"
-            featured
-            features={[
-               "NVIDIA CUDA 12.x Support",
-               "Zero-Config Docker Hub",
-               "Blender/Cycle automated chunks",
-               "Priority Scheduler queue"
-            ]}
-          />
-        </div>
+        <section className="border-b border-rule">
+          <div className="mx-auto grid max-w-[1240px] md:grid-cols-2">
+            {PLANS.map((p, i) => (
+              <article
+                key={p.title}
+                className={`px-4 py-12 sm:px-8 md:py-16 ${i === 0 ? "border-b border-rule md:border-b-0 md:border-r" : "bg-surface"}`}
+              >
+                <div>
+                  <h2 className="text-[22px] font-semibold tracking-[-0.02em]">{p.title}</h2>
+                </div>
+                <p className="mt-2 text-[15px] text-mute">{p.desc}</p>
+                <div className="mt-8 flex items-baseline gap-2 border-t border-ink pt-6">
+                  <span className={`num text-[56px] font-medium leading-none tracking-[-0.03em] ${p.featured ? "text-primary" : ""}`}>
+                    {p.price}
+                  </span>
+                  <span className="num text-sm text-mute">{p.unit}</span>
+                </div>
+                <ul className="mt-8 border-t border-rule">
+                  {p.features.map((f) => (
+                    <li key={f} className="flex items-center gap-3 border-b border-rule py-3 text-sm text-ink-2">
+                      <span className="h-1.5 w-1.5 shrink-0 bg-ink" aria-hidden="true" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/submit" className={`btn mt-8 ${p.featured ? "btn-primary" : "btn-outline"}`}>
+                  Submit a job
+                  <ArrowRight size={16} />
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
 
-        {/* Market Comparison */}
-        <motion.div 
-           className="bg-slate-900/40 backdrop-blur-3xl rounded-[40px] p-12 max-w-4xl mx-auto border border-slate-800 text-left shadow-2xl"
-           initial={{ opacity: 0, scale: 0.95 }}
-           whileInView={{ opacity: 1, scale: 1 }}
-           viewport={{ once: true }}
-        >
-          <h2 className="text-[10px] font-black text-slate-500 mb-10 uppercase tracking-[0.3em] text-center">Protocol Transparency / Market Comparison</h2>
-          <div className="space-y-4">
-            <ComparisonRow provider="AWS EC2 (p3.2xlarge)" cost="₹224.50 / hr" />
-            <ComparisonRow provider="Google Cloud (v100)" cost="₹286.00 / hr" />
-            <ComparisonRow provider="Azure NV6" cost="₹198.25 / hr" />
-            <div className="pt-6 mt-6 border-t border-slate-800">
-              <ComparisonRow provider="CampuGrid Decentralized" cost="₹12.50 / hr" highlight />
+        <section className="border-b border-rule">
+          <div className="mx-auto grid max-w-[1240px] gap-10 px-4 py-14 sm:px-8 md:grid-cols-[1fr_1.4fr] md:py-20">
+            <div>
+              <h2 className="text-[28px] font-semibold tracking-[-0.03em] sm:text-[34px]">Against the cloud</h2>
+              <p className="mt-3 max-w-[44ch] text-[15px] leading-relaxed text-mute">
+                Per-hour cost for one GPU. Cloud figures are approximate on-demand list prices, converted to rupees.
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table-ruled">
+                <thead>
+                  <tr>
+                    <th className="!pl-0">Provider</th>
+                    <th className="!text-right">Per hour</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON.map((r) => (
+                    <tr key={r.provider}>
+                      <td className="!pl-0 text-ink-2">{r.provider}</td>
+                      <td className="num text-right text-ink-2">{r.cost}</td>
+                    </tr>
+                  ))}
+                  <tr className="[&>td]:!border-t [&>td]:!border-ink">
+                    <td className="!pl-0 font-semibold">SpareCycles, RTX 3090</td>
+                    <td className="num text-right text-[18px] font-medium text-primary">₹12.50</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <div className="mt-12 p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl flex items-center justify-between group cursor-pointer">
-             <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
-                   <Database size={24} />
-                </div>
-                <div>
-                   <h4 className="text-white font-bold">Enterprise Quote?</h4>
-                   <p className="text-slate-500 text-sm">Custom SLAs and private cluster orchestration.</p>
-                </div>
-             </div>
-             <ArrowRight className="text-emerald-500 group-hover:translate-x-2 transition-transform" />
-          </div>
-        </motion.div>
+        </section>
       </main>
-    </div>
-  );
-}
 
-function PricingCard({ title, desc, icon: Icon, price, unit, features, featured }: any) {
-  return (
-    <motion.div
-      className={`relative p-10 rounded-[40px] text-left transition-all overflow-hidden ${
-        featured 
-          ? "bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 border border-emerald-500/30 shadow-2xl shadow-emerald-500/20" 
-          : "bg-slate-900/40 border border-slate-800"
-      }`}
-      whileHover={{ y: -8 }}
-    >
-      <div className="relative z-10">
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-8 ${featured ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}>
-           <Icon size={32} />
-        </div>
-        
-        <h3 className="text-3xl font-black text-white mb-2">{title}</h3>
-        <p className="text-slate-500 text-sm mb-10 leading-relaxed">{desc}</p>
-        
-        <div className="mb-10 flex items-baseline gap-2">
-          <span className="text-6xl font-black text-white tabular-nums tracking-tighter">{price}</span>
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{unit}</span>
-        </div>
-
-        <Link href="/login" className={`w-full py-5 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-xs transition-all mb-10 ${
-           featured ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-xl' : 'bg-white text-slate-950 hover:bg-emerald-50'
-        }`}>
-          Select Tier
-        </Link>
-        
-        <ul className="space-y-5">
-          {features.map((f: string, i: number) => (
-            <li key={i} className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest group cursor-default">
-              <div className={`p-1 rounded-md ${featured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-600'}`}>
-                 <Check size={14} />
-              </div>
-              <span className="group-hover:text-white transition-colors">{f}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </motion.div>
-  );
-}
-
-function ComparisonRow({ provider, cost, highlight }: any) {
-  return (
-    <div className={`flex justify-between items-center px-6 py-4 rounded-2xl transition-all ${highlight ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-lg' : 'hover:bg-white/5'}`}>
-      <span className={`text-[10px] font-black uppercase tracking-widest ${highlight ? "text-emerald-400" : "text-slate-500"}`}>
-        {provider}
-      </span>
-      <span className={`font-mono text-sm font-black ${highlight ? "text-white" : "text-slate-400 opacity-60"}`}>
-        {cost}
-      </span>
+      <MarketingFooter />
     </div>
   );
 }

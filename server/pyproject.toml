@@ -28,6 +28,10 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
     "httpx>=0.28.0",
+
+    # .blend parsing (frame range) without Blender
+    "blender-asset-tracer>=1.18",
+    "zstandard>=0.22",
     
     # Validation & serialization
     "pydantic>=2.10.0",
